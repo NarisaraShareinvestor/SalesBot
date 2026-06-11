@@ -1,5 +1,6 @@
-# SalesBot — deploy alongside other sites on the Hostinger VPS.
-# Binds to 127.0.0.1:8001 only (host nginx reverse-proxies salesbot.ohmai.me → here).
+# SalesBot — deploy alongside the hermes stack on the Hostinger VPS.
+# hermes_nginx (the front door, owns 80/443) reverse-proxies salesbot.ohmai.me
+# to this container BY NAME over the shared hermes docker network.
 services:
   salesbot:
     build: .
@@ -11,8 +12,15 @@ services:
     environment:
       DATABASE_URL: sqlite:////data/salesbot.db
     volumes:
-      - ./data:/data                                       # holds salesbot.db (+ wal/journal)
+      - ./data:/data                                       # salesbot.db (+ wal/journal) persists
       - ./data/ae_emails.json:/app/backend/ae_emails.json  # AE→email map persists
       - ./data/user_smtp.json:/app/backend/user_smtp.json  # per-user SMTP persists
+    networks:
+      - hermes                  # so hermes_nginx can reach http://salesbot:8000
     ports:
-      - "127.0.0.1:8001:8000"    # localhost only — never exposed publicly
+      - "127.0.0.1:8001:8000"   # host-side health checks only (not the public path)
+
+networks:
+  hermes:
+    external: true
+    name: hermes-ai-skill-hub_hermes_network
