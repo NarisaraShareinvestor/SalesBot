@@ -150,6 +150,9 @@ class CustomerIn(BaseModel):
     industry: Optional[str] = None
     sector: Optional[str] = None
     url: Optional[str] = None
+    address_th: Optional[str] = None
+    address_en: Optional[str] = None
+    zip_code: Optional[str] = None
     grade: Optional[str] = None
     ir_team: Optional[str] = None
     contact_email: Optional[str] = None
