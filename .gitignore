@@ -8,3 +8,5 @@ backend/user_smtp.json
 .DS_Store
 # ข้อมูลลูกค้าจริง — ไม่ขึ้น GitHub (วางไฟล์ในเครื่องแล้วรัน import_data.py)
 Data/*.xlsx
+# runtime data + secrets บน VPS (db, .env, json) — ไม่ขึ้น GitHub
+data/

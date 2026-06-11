@@ -1,0 +1,18 @@
+# SalesBot — deploy alongside other sites on the Hostinger VPS.
+# Binds to 127.0.0.1:8001 only (host nginx reverse-proxies salesbot.ohmai.me → here).
+services:
+  salesbot:
+    build: .
+    image: salesbot:latest
+    container_name: salesbot
+    restart: always
+    env_file:
+      - ./data/.env            # OPENAI_API_KEY, OPENAI_MODEL, SMTP_*, EXPIRING_THRESHOLD_DAYS
+    environment:
+      DATABASE_URL: sqlite:////data/salesbot.db
+    volumes:
+      - ./data:/data                                       # holds salesbot.db (+ wal/journal)
+      - ./data/ae_emails.json:/app/backend/ae_emails.json  # AE→email map persists
+      - ./data/user_smtp.json:/app/backend/user_smtp.json  # per-user SMTP persists
+    ports:
+      - "127.0.0.1:8001:8000"    # localhost only — never exposed publicly

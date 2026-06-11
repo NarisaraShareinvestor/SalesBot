@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+**/__pycache__/
+*.pyc
+.git/
+Data/*.xlsx
+backend/salesbot.db
+backend/ae_emails.json
+backend/user_smtp.json
+.env
+.DS_Store
+deploy/
