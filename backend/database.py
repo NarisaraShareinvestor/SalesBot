@@ -7,11 +7,15 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 from sqlalchemy.pool import StaticPool
 
+# Check DATABASE_URL from docker-compose environment FIRST (before load_dotenv override)
+DATABASE_URL = os.getenv("DATABASE_URL")
+
 load_dotenv()
 
-# Default: SQLite file next to the backend package
-_DEFAULT_SQLITE = f"sqlite:///{Path(__file__).resolve().parent / 'salesbot.db'}"
-DATABASE_URL = os.getenv("DATABASE_URL", _DEFAULT_SQLITE)
+# If not set from environment, use default SQLite
+if not DATABASE_URL:
+    _DEFAULT_SQLITE = f"sqlite:///{Path(__file__).resolve().parent / 'salesbot.db'}"
+    DATABASE_URL = os.getenv("DATABASE_URL", _DEFAULT_SQLITE)
 
 _is_pg = "postgresql" in DATABASE_URL
 
