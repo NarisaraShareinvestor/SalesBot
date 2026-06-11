@@ -41,14 +41,15 @@
 
   /* Main */
   .main{flex:1;display:flex;flex-direction:column;overflow:hidden}
-  .topbar{display:flex;align-items:center;justify-content:space-between;padding:20px 28px 14px}
+  .topbar{display:flex;align-items:center;justify-content:space-between;padding:20px 28px 14px;overflow:visible}
   .topbar h2{font-size:21px;font-weight:600;letter-spacing:-.3px}
   .topbar .sub{font-size:12.5px;color:var(--muted);margin-top:2px}
-  .bell{position:relative;cursor:pointer;background:var(--card);border:1px solid var(--line);width:40px;height:40px;
-    border-radius:10px;display:flex;align-items:center;justify-content:center;color:var(--ink2)}
+  .bell{position:relative;cursor:pointer;background:var(--card);border:1px solid var(--line);width:44px;height:44px;
+    border-radius:10px;display:flex;align-items:center;justify-content:center;color:var(--ink2);overflow:visible;z-index:10}
   .bell:hover{background:#f3f4f6}
-  .bell .badge{position:absolute;top:-7px;right:-7px;background:var(--bad);color:#fff;font-size:10.5px;font-weight:600;
-    min-width:19px;height:19px;border-radius:10px;display:flex;align-items:center;justify-content:center;padding:0 5px}
+  .bell .badge{position:absolute;top:-6px;right:-6px;background:var(--bad);color:#fff;font-size:10.5px;font-weight:600;
+    min-width:18px;height:18px;border-radius:9px;display:flex;align-items:center;justify-content:center;padding:0 4px;
+    pointer-events:none}
   .scroll{flex:1;overflow-y:auto;padding:6px 28px 26px}
 
   .card{background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}
@@ -297,11 +298,33 @@
               <div class="card-head"><h3>ปฏิทินงาน</h3></div>
               <div id="notifAgenda" style="padding:6px 18px 16px"></div>
             </div>
+            <div class="card" style="margin-top:16px">
+              <div class="card-head"><h3>ส่งสรุปทางอีเมล</h3></div>
+              <div style="padding:10px 18px 14px">
+                <div style="font-size:12.5px;color:var(--muted);margin-bottom:10px">ส่งสรุปสัญญาใกล้หมดให้ AE ที่ตั้งอีเมลไว้</div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap">
+                  <button class="btn primary" style="flex:1;justify-content:center" onclick="sendDigest()">ส่งสรุป</button>
+                  <button class="btn" style="flex:1;justify-content:center" onclick="openAeEmails()">ตั้งค่าอีเมล</button>
+                </div>
+                <div id="digestMsg" style="font-size:12px;color:var(--muted);margin-top:8px;min-height:16px;line-height:1.5"></div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
     </div>
   </div>
+
+  <!-- AE Email settings modal -->
+  <div class="modal" id="aeEmailModal"><div class="box" style="width:480px">
+    <h3>ตั้งค่าอีเมลทีม (AE → Email)</h3>
+    <p style="font-size:12.5px;color:var(--muted);margin:-8px 0 16px">อีเมลสรุปสัญญาใกล้หมดจะส่งไปยังอีเมลของ AE แต่ละคนที่ตั้งไว้</p>
+    <div id="aeEmailFields" style="max-height:380px;overflow-y:auto;display:flex;flex-direction:column;gap:10px"></div>
+    <div class="actions"><span></span><div class="right">
+      <button class="btn" onclick="document.getElementById('aeEmailModal').classList.remove('open')">ปิด</button>
+      <button class="btn primary" onclick="saveAeEmails()">บันทึก</button>
+    </div></div>
+  </div></div>
 
   <!-- Create task modal -->
   <div class="modal" id="taskModal"><div class="box" style="width:440px">
@@ -346,10 +369,27 @@
       <div class="fld"><label>Status</label><select id="f_contract_status"><option value="">-</option><option>Active</option><option>Expired</option><option>Cancelled</option></select></div>
       <div class="fld"><label>Effective Date</label><input id="f_effective_date" type="date"></div>
       <div class="fld"><label>Expiry Date</label><input id="f_expiry_date" type="date"></div>
-      <div class="fld"><label>มูลค่า (Latest Value)</label><input id="f_latest_value" type="number"></div>
-      <div class="fld"><label>Grade</label><input id="f_grade"></div>
-      <div class="fld"><label>Contact Email</label><input id="f_contact_email"></div>
+      <div class="fld"><label>Monthly Payment</label><input id="f_monthly_payment" type="number" placeholder="บาท/เดือน"></div>
+      <div class="fld"><label>Latest Value</label><input id="f_latest_value" type="number" placeholder="มูลค่าล่าสุด"></div>
+      <div class="fld"><label>Market</label><input id="f_market" placeholder="SET / mai / ..."></div>
+      <div class="fld"><label>Sector</label><input id="f_sector"></div>
       <div class="fld"><label>Industry</label><input id="f_industry"></div>
+      <div class="fld"><label>Grade</label><input id="f_grade"></div>
+      <div class="fld"><label>Website / URL</label><input id="f_url" placeholder="https://..."></div>
+      <div class="fld"><label>IR Team</label><input id="f_ir_team"></div>
+      <div class="fld"><label>Contact Email</label><input id="f_contact_email"></div>
+      <div class="fld"><label>CC Emails</label><input id="f_cc_emails" placeholder="email1, email2"></div>
+      <div class="fld" style="grid-column:1/-1"><label>Contract Status Remark</label><input id="f_contract_status_text" placeholder="เช่น ต่อแน่นอน / รอดูงบ Q3"></div>
+    </div>
+    <div class="section-t" style="margin-top:14px;margin-bottom:10px">ดัชนี / ที่อยู่ (จาก Excel)</div>
+    <div class="grid2">
+      <div class="fld"><label>SET 100</label><select id="fx_set_100"><option value="">-</option><option value="Yes">Yes</option><option value="No">No</option></select></div>
+      <div class="fld"><label>SET ESG</label><select id="fx_set_esg"><option value="">-</option><option value="Yes">Yes</option><option value="No">No</option></select></div>
+      <div class="fld"><label>AE (recommend)</label><input id="fx_ae_recommend" list="aeList" placeholder="..."></div>
+      <div class="fld"><label>Product Pryce ESG</label><input id="fx_product_pryce_esg"></div>
+      <div class="fld" style="grid-column:1/-1"><label>ที่อยู่ (TH)</label><input id="fx_address_th"></div>
+      <div class="fld" style="grid-column:1/-1"><label>Address (EN)</label><input id="fx_address_en"></div>
+      <div class="fld"><label>Zip Code</label><input id="fx_zip_code"></div>
     </div>
 
     <div id="fuSection" style="display:none">
@@ -496,7 +536,7 @@ async function loadCustomers(){
   renderTable(["Account","Company Name","AE-IR","Expiry Date","Status","Product","มูลค่า"],
     d.items.map(c=>({account:c.account,cells:[`<span class="acct">${esc(c.account)}</span>`,esc(c.company_name)||"-",esc(c.ae_ir)||'<span class="mut">—</span>',
       `<span class="${dateCls(c.expiry_state)}">${fmtDate(c.expiry_date)}</span>`,statusBadge(c.status),esc(c.product)||"-",
-      `<span class="num" style="display:block">${fmtMoney(c.value)}</span>`]})),[0,0,0,0,0,0,1]);
+      `<span class="num" style="display:block">${fmtMoney(c.value)}</span>`]})),[0,0,0,0,0,0,1],true);
   renderPager(d);
 }
 async function loadExpiring(){
@@ -507,7 +547,7 @@ async function loadExpiring(){
       `<span class="${dateCls(c.expiry_state)}">${fmtDate(c.expiry_date)}</span>`,
       c.expiry_state==="expired"?`<span class="badge b-bad">หมดแล้ว ${-c.days_to_expiry} วัน</span>`:`<span class="badge b-warn">อีก ${c.days_to_expiry} วัน</span>`,
       `<span class="num" style="display:block">${fmtMoney(c.value)}</span>`]})),[0,0,0,0,0,1]);
-  document.getElementById("pagerInfo").textContent=`${d.count} รายการ — หมดแล้ว ${d.expired_count} · ใกล้หมด ${d.expiring_soon_count}${meAE()?` (ของ ${meAE()})`:""}`;
+  document.getElementById("pagerInfo").textContent=`${d.count} รายการ ใกล้หมดอายุ${meAE()?` (ของ ${meAE()})` : ""}`;
   document.getElementById("pagerPages").innerHTML="";
 }
 async function loadContacts(){
@@ -518,12 +558,17 @@ async function loadContacts(){
   document.getElementById("pagerInfo").textContent=`${d.length} รายชื่อ`;
   document.getElementById("pagerPages").innerHTML="";
 }
-function renderTable(headers,rows,nums){
+function renderTable(headers,rows,nums,canDelete){
   nums=nums||[];
   const t=document.getElementById("dataTable");
-  t.innerHTML="<thead><tr>"+headers.map((h,i)=>`<th class="${nums[i]?'num':''}">${h}</th>`).join("")+"</tr></thead><tbody>"+
-    (rows.length? rows.map(r=>`<tr class="clickable" onclick="editCustomer('${r.account}')">`+r.cells.map((c,i)=>`<td class="${nums[i]?'num':''}">${c}</td>`).join("")+"</tr>").join("")
-      :`<tr><td colspan="${headers.length}"><div class="empty">ไม่พบข้อมูล</div></td></tr>`)+"</tbody>";
+  const delTh=canDelete?`<th style="width:36px"></th>`:"";
+  const delTd=acct=>canDelete?`<td onclick="event.stopPropagation()" style="padding:0 8px;text-align:center">
+    <button class="btn" style="padding:3px 7px;color:var(--bad);border-color:var(--bad-bg)" onclick="deleteCustomer('${acct}')">
+      <svg class="ico" viewBox="0 0 24 24" style="width:14px;height:14px"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6M9 6V4h6v2"/></svg>
+    </button></td>`:"";
+  t.innerHTML="<thead><tr>"+headers.map((h,i)=>`<th class="${nums[i]?'num':''}">${h}</th>`).join("")+delTh+"</tr></thead><tbody>"+
+    (rows.length? rows.map(r=>`<tr class="clickable" onclick="editCustomer('${r.account}')">`+r.cells.map((c,i)=>`<td class="${nums[i]?'num':''}">${c}</td>`).join("")+delTd(r.account)+"</tr>").join("")
+      :`<tr><td colspan="${headers.length+(canDelete?1:0)}"><div class="empty">ไม่พบข้อมูล</div></td></tr>`)+"</tbody>";
 }
 function renderPager(d){
   document.getElementById("pagerInfo").textContent=`แสดง ${d.items.length} จาก ${d.total} รายการ`;
@@ -581,7 +626,7 @@ function notifItems(){
   });
   notifData.exp.forEach(e=>{
     out.push({kind:"expiring",done:false,
-      title:e.expiry_state==="expired"?"สัญญาหมดอายุ (Overdue)":"สัญญาใกล้หมดอายุ",
+      title:"สัญญาใกล้หมดอายุ",
       sub:`${e.account} · ${e.company_name||""}`+(e.ae_ir?` · ${e.ae_ir}`:""),
       account:e.account,due:e.expiry_date,product:e.product,days:e.days_to_expiry,state:e.expiry_state});
   });
@@ -615,7 +660,6 @@ function badgeFor(it){
     if(it.days===1)return '<span class="badge b-warn">พรุ่งนี้</span>';
     return `<span class="badge b-mut">${it.days} วัน</span>`;
   }
-  if(it.state==="expired")return '<span class="badge b-bad">Overdue</span>';
   return `<span class="badge b-warn">${it.days} วัน</span>`;
 }
 function iconFor(kind){
@@ -656,7 +700,7 @@ function renderNotifSide(){
   document.getElementById("notifExp").innerHTML=notifData.exp.slice(0,5).map(e=>
     `<div class="side-row"><span class="a">${esc(e.account)}</span>
       <span><span class="${dateCls(e.expiry_state)}">${fmtDate(e.expiry_date)}</span>
-      <span class="mut"> · ${e.expiry_state==="expired"?`เลย ${-e.days_to_expiry}d`:`${e.days_to_expiry}d`}</span></span></div>`).join("")
+      <span class="mut"> · ${e.days_to_expiry}d</span></span></div>`).join("")
     || '<div class="mut" style="font-size:12.5px;padding:6px 0">ไม่มี</div>';
   const agenda=notifData.tasks.filter(t=>!t.done&&t.due_date).sort((a,b)=>new Date(a.due_date)-new Date(b.due_date)).slice(0,6);
   document.getElementById("notifAgenda").innerHTML=agenda.map(t=>
@@ -670,6 +714,45 @@ async function snoozeTask(id,due){
   const nd=base.toISOString().slice(0,10);
   await fetch(`${API}/api/followups/${id}`,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({due_date:nd})});
   loadNotifPage();loadNotifBadge();
+}
+/* AE email settings */
+async function openAeEmails(){
+  const data=await fetch(`${API}/api/ae-emails`).then(r=>r.json());
+  document.getElementById("aeEmailFields").innerHTML=Object.entries(data).map(([ae,email])=>
+    `<div class="fld" style="margin:0"><label style="font-size:12.5px;font-weight:500">${esc(ae)}</label>
+     <input name="ae_email" data-ae="${esc(ae)}" value="${esc(email)}" placeholder="name@shareinvestor.com" type="email"></div>`
+  ).join("");
+  document.getElementById("aeEmailModal").classList.add("open");
+}
+async function saveAeEmails(){
+  const inputs=document.querySelectorAll("#aeEmailFields input[data-ae]");
+  const mapping={};
+  inputs.forEach(i=>{const v=(i.value||"").trim();if(v)mapping[i.dataset.ae]=v;});
+  await fetch(`${API}/api/ae-emails`,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({mapping})});
+  document.getElementById("aeEmailModal").classList.remove("open");
+}
+async function sendDigest(){
+  const msg=document.getElementById("digestMsg");
+  msg.style.color="var(--muted)"; msg.textContent="กำลังส่ง...";
+  try{
+    const r=await fetch(`${API}/api/notifications/send-email`,{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({sender_email:me?.email||null,ae:meAE()||null})});
+    const d=await r.json();
+    if(d.sent>0){
+      msg.style.color="var(--ok)"; msg.textContent=`ส่งสำเร็จ ${d.sent} ราย`;
+      setTimeout(()=>{msg.textContent="";},5000);
+    } else if(d.skipped){
+      const missing=(d.missing_email||[]);
+      msg.style.color="var(--bad)";
+      if(missing.length)
+        msg.textContent=`ยังไม่มีอีเมลของ: ${missing.join(", ")} — กด "ตั้งค่าอีเมล" เพื่อเพิ่ม`;
+      else
+        msg.textContent=d.reason||"ยังไม่ได้ตั้งค่า SMTP";
+    } else {
+      msg.style.color="var(--muted)"; msg.textContent="ไม่มีสัญญาใกล้หมด";
+      setTimeout(()=>{msg.textContent="";},4000);
+    }
+  }catch(e){msg.style.color="var(--bad)"; msg.textContent="เกิดข้อผิดพลาด";}
 }
 /* create task */
 function openTaskModal(){["t_note","t_date","t_time","t_account"].forEach(i=>document.getElementById(i).value="");document.getElementById("taskModal").classList.add("open");}
@@ -710,17 +793,28 @@ async function sendChat(e){
 }
 
 /* ── Modal + Follow-ups ── */
-const FIELDS=["account","ae_ir","company_name_en","company_name_th","contract_type","contract_status","effective_date","expiry_date","latest_value","grade","contact_email","industry"];
+const FIELDS=["account","ae_ir","company_name_en","company_name_th","contract_type","contract_status","effective_date","expiry_date","monthly_payment","latest_value","market","sector","industry","grade","url","ir_team","contact_email","cc_emails","contract_status_text"];
+const NUM_FIELDS=new Set(["monthly_payment","latest_value"]);
+const EXTRA_FIELDS=[["set 100","fx_set_100"],["set esg","fx_set_esg"],["ae (recommend)","fx_ae_recommend"],["product pryce esg","fx_product_pryce_esg"],["address (th)","fx_address_th"],["address (en)","fx_address_en"],["zip code","fx_zip_code"]];
 function openModal(){state.editing=null;document.getElementById("modalTitle").textContent="เพิ่มลูกค้าใหม่";
   FIELDS.forEach(f=>document.getElementById("f_"+f).value="");
+  EXTRA_FIELDS.forEach(([,id])=>{const el=document.getElementById(id);if(el)el.value="";});
   if(meAE())document.getElementById("f_ae_ir").value=meAE();
   document.getElementById("f_account").disabled=false;
   document.getElementById("fuSection").style.display="none";
   document.getElementById("modal").classList.add("open");}
+async function deleteCustomer(acct){
+  if(!confirm(`ลบ "${acct}" ออกจากระบบ?\n\nการดำเนินการนี้ไม่สามารถย้อนกลับได้ และจะลบงานติดตามของลูกค้านี้ทั้งหมดด้วย`))return;
+  const r=await fetch(`${API}/api/customers/${encodeURIComponent(acct)}`,{method:"DELETE"});
+  if(r.ok){reload();loadNotifBadge();}
+  else{const e=await r.json().catch(()=>({}));alert("ลบไม่สำเร็จ: "+(e.detail||r.status));}
+}
 async function editCustomer(acct){
   const c=await (await fetch(`${API}/api/customers/${encodeURIComponent(acct)}`)).json();
   state.editing=acct;document.getElementById("modalTitle").textContent="แก้ไข: "+acct;
   FIELDS.forEach(f=>document.getElementById("f_"+f).value=c[f]??"");
+  const ex=c.extra||{};
+  EXTRA_FIELDS.forEach(([key,id])=>{const el=document.getElementById(id);if(el)el.value=ex[key]??"";});
   document.getElementById("f_account").disabled=true;
   document.getElementById("fuSection").style.display="block";
   loadFollowups(acct);
@@ -728,7 +822,11 @@ async function editCustomer(acct){
 }
 function closeModal(){document.getElementById("modal").classList.remove("open");}
 async function saveCustomer(){
-  const body={};FIELDS.forEach(f=>{const v=document.getElementById("f_"+f).value.trim();if(v!=="")body[f]=(f==="latest_value")?Number(v):v;});
+  const body={};
+  FIELDS.forEach(f=>{const v=document.getElementById("f_"+f).value.trim();if(v!=="")body[f]=NUM_FIELDS.has(f)?Number(v):v;});
+  const extra={};
+  EXTRA_FIELDS.forEach(([key,id])=>{const v=(document.getElementById(id)?.value||"").trim();extra[key]=v||null;});
+  body.extra=extra;
   if(!body.account&&!state.editing){alert("กรุณาระบุ Account");return;}
   let r;
   if(state.editing)r=await fetch(`${API}/api/customers/${encodeURIComponent(state.editing)}`,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});

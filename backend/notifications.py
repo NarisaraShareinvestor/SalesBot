@@ -75,7 +75,7 @@ _DEAD_STATUSES = {"cancelled"}
 
 def compute_notifications(db: Session, ae: Optional[str] = None,
                           threshold_days: int = EXPIRING_THRESHOLD_DAYS) -> List[Dict]:
-    """สัญญาที่ actionable (ต่อได้) ซึ่ง expired หรือ expiring_soon — ตัด Cancelled ออก. เรียงด่วนสุดก่อน."""
+    """สัญญาที่ใกล้หมดอายุ (ยังไม่เลย) — ตัด Cancelled และที่หมดแล้วออก. เรียงด่วนสุดก่อน."""
     q = db.query(Customer).filter(Customer.expiry_date.isnot(None))
     if ae:
         q = q.filter(Customer.ae_ir == ae)
@@ -84,7 +84,7 @@ def compute_notifications(db: Session, ae: Optional[str] = None,
         if (c.contract_status or "").strip().lower() in _DEAD_STATUSES:
             continue
         es = expiry_state(c.expiry_date, threshold_days)
-        if es["state"] in ("expired", "expiring_soon"):
+        if es["state"] == "expiring_soon":
             items.append(customer_summary(c))
     items.sort(key=lambda r: (r["days_to_expiry"] if r["days_to_expiry"] is not None else 9999))
     return items
@@ -147,7 +147,7 @@ def send_expiry_digest(db: Session, to_email: Optional[str] = None,
     cfg = _smtp_config(sender_email)
     items = compute_notifications(db, ae)
     if not items:
-        return {"sent": 0, "skipped": True, "reason": "ไม่มีสัญญาใกล้หมด/หมดอายุ"}
+        return {"sent": 0, "skipped": True, "reason": "ไม่มีสัญญาใกล้หมดอายุ"}
 
     by_ae = defaultdict(list)
     for i in items:

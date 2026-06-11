@@ -102,5 +102,6 @@ def customer_full(c: Customer) -> Dict:
         "ir_team": c.ir_team,
         "contact_email": c.contact_email,
         "cc_emails": c.cc_emails,
+        "extra": c.extra,
     })
     return d

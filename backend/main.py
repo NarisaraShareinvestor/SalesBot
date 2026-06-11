@@ -154,6 +154,7 @@ class CustomerIn(BaseModel):
     ir_team: Optional[str] = None
     contact_email: Optional[str] = None
     cc_emails: Optional[str] = None
+    extra: Optional[dict] = None
 
 
 _DATE_FIELDS = ("effective_date", "expiry_date")
@@ -162,6 +163,15 @@ _DATE_FIELDS = ("effective_date", "expiry_date")
 def _apply(c: Customer, data: dict):
     for k, v in data.items():
         if k == "account":
+            continue
+        if k == "extra" and isinstance(v, dict):
+            existing = dict(c.extra or {})
+            for ek, ev in v.items():
+                if ev is not None and ev != "":
+                    existing[ek] = ev
+                else:
+                    existing.pop(ek, None)
+            setattr(c, "extra", existing)
             continue
         if k in _DATE_FIELDS and v:
             try:
@@ -196,6 +206,17 @@ def update_customer(account: str, body: CustomerIn, db: Session = Depends(get_db
     db.commit()
     db.refresh(c)
     return customer_full(c)
+
+
+@app.delete("/api/customers/{account}")
+def delete_customer(account: str, db: Session = Depends(get_db)):
+    c = db.get(Customer, account.strip().upper())
+    if not c:
+        raise HTTPException(404, "customer not found")
+    db.query(FollowUp).filter(FollowUp.account == c.account).delete()
+    db.delete(c)
+    db.commit()
+    return {"deleted": True, "account": c.account}
 
 
 # ── Dashboard / team overview ────────────────────────────────────────────────
