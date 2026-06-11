@@ -110,6 +110,9 @@ def _search_customers(db: Session, query: str) -> List[Dict]:
         Customer.company_name_th.ilike(like),
         Customer.contact_email.ilike(like),
         Customer.cc_emails.ilike(like),
+        Customer.address_th.ilike(like),
+        Customer.address_en.ilike(like),
+        Customer.zip_code.ilike(like),
     )).limit(25).all()
     return [customer_summary(c) for c in rows]
 
