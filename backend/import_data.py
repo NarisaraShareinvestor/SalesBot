@@ -36,6 +36,9 @@ AGREEMENT_MAP = {
     "industry": "industry",
     "sector": "sector",
     "url": "url",
+    "address_th": "address (th)",
+    "address_en": "address (en)",
+    "zip_code": "zip code",
 }
 
 
@@ -147,6 +150,8 @@ def import_all():
                 fields[field] = to_int(val)
             elif field in ("effective_date", "expiry_date"):
                 fields[field] = to_dt(val)
+            elif field in ("address_th", "address_en"):
+                fields[field] = clean(val)
             else:
                 fields[field] = clean(val)
 

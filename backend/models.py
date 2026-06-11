@@ -36,6 +36,10 @@ class Customer(Base):
     sector = Column(String(200), nullable=True)
     url = Column(String(500), nullable=True)
 
+    address_th = Column(Text, nullable=True)
+    address_en = Column(Text, nullable=True)
+    zip_code = Column(String(20), nullable=True)
+
     # จาก PR-All-IR-List (join ด้วย account)
     grade = Column(String(20), nullable=True)
     ir_team = Column(String(100), nullable=True)

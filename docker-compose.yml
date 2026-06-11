@@ -15,6 +15,7 @@ services:
       - ./data:/data                                       # salesbot.db (+ wal/journal) persists
       - ./data/ae_emails.json:/app/backend/ae_emails.json  # AE→email map persists
       - ./data/user_smtp.json:/app/backend/user_smtp.json  # per-user SMTP persists
+      - ./Data:/app/Data                                   # Excel import files (readonly)
     networks:
       - hermes                  # so hermes_nginx can reach http://salesbot:8000
     ports:
