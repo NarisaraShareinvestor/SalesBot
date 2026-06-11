@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SalesBot — IR Sales Intelligence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f6f7f9; --card:#ffffff; --line:#e6e8ec; --line2:#eef0f3;
+    --ink:#14181f; --ink2:#3a4250; --muted:#7b8494; --faint:#a3aab6;
+    --accent:#14181f; --accent-h:#2b313c;
+    --ok:#2f7d57; --ok-bg:#e8f3ed; --warn:#9a6a14; --warn-bg:#fbf2e0; --bad:#a4373a; --bad-bg:#f7e9e9;
+    --shadow:0 1px 2px rgba(20,24,31,.04),0 1px 3px rgba(20,24,31,.06);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:"Inter","Sarabun",-apple-system,"Segoe UI",sans-serif;background:var(--bg);color:var(--ink);
+    height:100vh;display:flex;overflow:hidden;font-size:14px;-webkit-font-smoothing:antialiased}
+  svg{display:block}
+  .ico{width:19px;height:19px;stroke:currentColor;stroke-width:1.6;fill:none;stroke-linecap:round;stroke-linejoin:round}
+  button{font-family:inherit}
+
+  /* Sidebar */
+  .sidebar{width:230px;background:var(--card);border-right:1px solid var(--line);display:flex;flex-direction:column;flex-shrink:0}
+  .brand{display:flex;align-items:center;gap:11px;padding:22px 20px 18px}
+  .brand .mark{width:34px;height:34px;border-radius:9px;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;letter-spacing:.5px}
+  .brand h1{font-size:16px;font-weight:600;letter-spacing:-.2px}
+  .brand p{font-size:10.5px;color:var(--faint);margin-top:1px;letter-spacing:.2px}
+  .nav{padding:8px 12px;flex:1}
+  .nav a{display:flex;align-items:center;gap:11px;padding:10px 12px;border-radius:9px;color:var(--ink2);
+    text-decoration:none;font-size:14px;font-weight:500;margin-bottom:3px;cursor:pointer;position:relative}
+  .nav a:hover{background:#f3f4f6}
+  .nav a.active{background:#f0f1f3;color:var(--ink);font-weight:600}
+  .nav a.active::before{content:"";position:absolute;left:-12px;top:9px;bottom:9px;width:3px;border-radius:3px;background:var(--accent)}
+  .who{padding:14px;border-top:1px solid var(--line)}
+  .who label{font-size:10.5px;color:var(--faint);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px}
+  .who .sel{display:flex;align-items:center;gap:9px;border:1px solid var(--line);border-radius:9px;padding:8px 10px}
+  .who .av{width:28px;height:28px;border-radius:50%;background:#eceef1;color:var(--ink2);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;flex-shrink:0}
+  .who select{border:none;outline:none;background:none;font-family:inherit;font-size:13.5px;font-weight:600;color:var(--ink);width:100%;cursor:pointer}
+
+  /* Main */
+  .main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+  .topbar{display:flex;align-items:center;justify-content:space-between;padding:20px 28px 14px}
+  .topbar h2{font-size:21px;font-weight:600;letter-spacing:-.3px}
+  .topbar .sub{font-size:12.5px;color:var(--muted);margin-top:2px}
+  .bell{position:relative;cursor:pointer;background:var(--card);border:1px solid var(--line);width:40px;height:40px;
+    border-radius:10px;display:flex;align-items:center;justify-content:center;color:var(--ink2)}
+  .bell:hover{background:#f3f4f6}
+  .bell .badge{position:absolute;top:-7px;right:-7px;background:var(--bad);color:#fff;font-size:10.5px;font-weight:600;
+    min-width:19px;height:19px;border-radius:10px;display:flex;align-items:center;justify-content:center;padding:0 5px}
+  .scroll{flex:1;overflow-y:auto;padding:6px 28px 26px}
+
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}
+  .card-head{padding:16px 20px;border-bottom:1px solid var(--line2);display:flex;justify-content:space-between;align-items:center}
+  .card-head h3{font-size:15px;font-weight:600}
+  .card-head .sub{font-size:12px;color:var(--muted);margin-top:1px}
+
+  /* Dashboard */
+  .stats{display:grid;grid-template-columns:repeat(6,1fr);gap:14px;margin-bottom:18px}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:13px;padding:15px 16px;box-shadow:var(--shadow)}
+  .stat .lab{font-size:11.5px;color:var(--muted);font-weight:500;display:flex;align-items:center;gap:6px}
+  .stat .val{font-size:23px;font-weight:700;letter-spacing:-.5px;margin-top:7px}
+  .stat .dot{width:7px;height:7px;border-radius:50%}
+  .dot-ok{background:var(--ok)} .dot-warn{background:var(--warn)} .dot-bad{background:var(--bad)} .dot-mut{background:var(--faint)}
+
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{text-align:left;color:var(--muted);font-weight:600;font-size:11.5px;text-transform:uppercase;letter-spacing:.3px;
+    padding:11px 10px;border-bottom:1px solid var(--line2);position:sticky;top:0;background:var(--card)}
+  th.num,td.num{text-align:right}
+  td{padding:12px 10px;border-bottom:1px solid var(--line2);vertical-align:middle}
+  tr.clickable:hover{background:#fafbfc;cursor:pointer}
+  tbody tr:last-child td{border-bottom:none}
+  .acct{font-weight:600;letter-spacing:.2px}
+  .mut{color:var(--muted)}
+
+  .badge{font-size:11px;padding:2px 9px;border-radius:6px;font-weight:600;white-space:nowrap;display:inline-block}
+  .b-ok{background:var(--ok-bg);color:var(--ok)} .b-bad{background:var(--bad-bg);color:var(--bad)}
+  .b-warn{background:var(--warn-bg);color:var(--warn)} .b-mut{background:#eef0f3;color:var(--muted)}
+  .d-bad{color:var(--bad);font-weight:600} .d-warn{color:var(--warn);font-weight:600}
+
+  .btn{border:1px solid var(--line);border-radius:9px;padding:8px 14px;font-size:13px;background:var(--card);
+    cursor:pointer;color:var(--ink2);font-weight:500;display:inline-flex;align-items:center;gap:7px}
+  .btn:hover{background:#f3f4f6}
+  .btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .btn.primary:hover{background:var(--accent-h)}
+
+  /* Chat */
+  #view-chat .card{display:flex;flex-direction:column;height:calc(100vh - 120px)}
+  .chat-body{flex:1;overflow-y:auto;padding:22px 24px;display:flex;flex-direction:column;gap:16px}
+  .msg{display:flex;gap:11px;max-width:80%}
+  .msg.user{align-self:flex-end;flex-direction:row-reverse}
+  .msg .ic{width:30px;height:30px;border-radius:8px;background:#eceef1;color:var(--ink2);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .msg.user .ic{background:var(--accent);color:#fff}
+  .msg .bubble{background:#f4f5f7;border-radius:11px;padding:11px 14px;font-size:13.5px;line-height:1.6;white-space:pre-wrap}
+  .msg.user .bubble{background:var(--accent);color:#fff}
+  .msg .time{font-size:10px;color:var(--faint);margin-top:4px}
+  .msg .bubble .md-h{display:inline-block;font-weight:700;margin-top:9px;font-size:13.5px}
+  .msg .bubble strong{font-weight:700}
+  .chat-input{padding:14px 18px;border-top:1px solid var(--line2)}
+  .chat-input form{display:flex;gap:10px}
+  .chat-input input{flex:1;border:1px solid var(--line);border-radius:10px;padding:11px 14px;font-size:14px;outline:none;font-family:inherit}
+  .chat-input input:focus{border-color:var(--ink2)}
+  .chat-input button{background:var(--accent);color:#fff;border:none;width:44px;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+  .chat-note{font-size:11px;color:var(--faint);text-align:center;margin-top:9px}
+
+  /* Data */
+  .tabs{display:flex;gap:4px;padding:12px 16px 0}
+  .tabs button{background:none;border:none;padding:9px 14px;font-size:13.5px;color:var(--muted);cursor:pointer;
+    border-radius:8px;font-family:inherit;font-weight:500}
+  .tabs button:hover{background:#f3f4f6;color:var(--ink2)}
+  .tabs button.active{color:var(--ink);background:#f0f1f3;font-weight:600}
+  .toolbar{display:flex;gap:10px;padding:14px 16px;align-items:center;border-bottom:1px solid var(--line2)}
+  .search{flex:1;position:relative;display:flex;align-items:center}
+  .search .ico{position:absolute;left:12px;color:var(--faint);width:17px;height:17px}
+  .search input{width:100%;border:1px solid var(--line);border-radius:9px;padding:9px 12px 9px 36px;font-size:13px;outline:none;font-family:inherit}
+  .search input:focus{border-color:var(--ink2)}
+  select.flt{border:1px solid var(--line);border-radius:9px;padding:9px 12px;font-size:13px;background:var(--card);cursor:pointer;font-family:inherit;color:var(--ink2)}
+  .chip{display:inline-flex;align-items:center;gap:6px;background:#f0f1f3;border-radius:7px;padding:6px 10px;font-size:12.5px;font-weight:500}
+  .chip b{font-weight:600}.chip .x{cursor:pointer;color:var(--muted);font-weight:700}
+  .pager{display:flex;align-items:center;justify-content:space-between;padding:13px 18px;font-size:12.5px;color:var(--muted)}
+  .pager .pages{display:flex;gap:5px}
+  .pager button{border:1px solid var(--line);background:var(--card);border-radius:8px;min-width:32px;height:32px;cursor:pointer;font-family:inherit;color:var(--ink2)}
+  .pager button.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .pager button:disabled{opacity:.4;cursor:default}
+
+  /* Notifications */
+  .notif{position:absolute;right:28px;top:70px;width:400px;max-height:64vh;background:var(--card);border:1px solid var(--line);
+    border-radius:13px;box-shadow:0 10px 34px rgba(20,24,31,.16);overflow:hidden;display:none;z-index:50}
+  .notif.open{display:block}
+  .notif h4{padding:14px 16px;border-bottom:1px solid var(--line2);font-size:14px;font-weight:600;display:flex;justify-content:space-between;align-items:center}
+  .notif .list{overflow-y:auto;max-height:44vh}
+  .notif .it{padding:11px 16px;border-bottom:1px solid var(--line2);font-size:13px}
+  .notif .it b{display:block;font-weight:600;margin-bottom:2px}
+  .notif .ft{padding:12px 16px}
+
+  /* Modal */
+  .modal{position:fixed;inset:0;background:rgba(20,24,31,.42);display:none;align-items:center;justify-content:center;z-index:100;backdrop-filter:blur(2px)}
+  .modal.open{display:flex}
+  .modal .box{background:var(--card);border-radius:16px;width:620px;max-width:93vw;max-height:90vh;overflow-y:auto;padding:24px 26px}
+  .modal h3{margin-bottom:18px;font-size:17px;font-weight:600}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:13px}
+  .fld{margin-bottom:2px}
+  .fld label{font-size:11.5px;color:var(--muted);display:block;margin-bottom:5px;font-weight:500}
+  .fld input,.fld select{width:100%;border:1px solid var(--line);border-radius:8px;padding:9px 11px;font-size:13px;font-family:inherit;outline:none;color:var(--ink)}
+  .fld input:focus,.fld select:focus{border-color:var(--ink2)}
+  .modal .actions{display:flex;justify-content:space-between;align-items:center;margin-top:20px;gap:10px}
+  .modal .actions .right{display:flex;gap:10px}
+  .section-t{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin:22px 0 12px;border-top:1px solid var(--line2);padding-top:18px}
+  .fu{display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid var(--line2)}
+  .fu input[type=checkbox]{margin-top:3px}
+  .fu .body{flex:1;font-size:13px}
+  .fu .meta{font-size:11px;color:var(--faint);margin-top:2px}
+  .fu.done .body{text-decoration:line-through;color:var(--faint)}
+  .fu .del{cursor:pointer;color:var(--faint);font-size:16px;line-height:1}
+  .fu-add{display:flex;gap:8px;margin-top:12px}
+  .fu-add input{flex:1;border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:13px;font-family:inherit;outline:none}
+  .fu-add input[type=date]{flex:0 0 145px}
+  .empty{padding:34px;text-align:center;color:var(--faint);font-size:13px}
+  /* Nav count + Notifications page */
+  .navcount{font-size:11px;font-weight:600;background:#eceef1;color:var(--ink2);border-radius:20px;padding:1px 8px;min-width:20px;text-align:center}
+  .nav a.active .navcount{background:rgba(255,255,255,.22);color:#fff}
+  .chips{display:flex;gap:8px;flex-wrap:wrap}
+  .chip-f{display:inline-flex;align-items:center;gap:8px;padding:8px 14px;border:1px solid var(--line);border-radius:9px;background:var(--card);cursor:pointer;font-size:13px;color:var(--ink2);font-weight:500}
+  .chip-f:hover{background:#f3f4f6}
+  .chip-f.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .chip-f .n{font-size:11px;background:#eceef1;color:var(--ink2);border-radius:20px;padding:0 7px;font-weight:600}
+  .chip-f.active .n{background:rgba(255,255,255,.22);color:#fff}
+  .nrow{display:flex;align-items:center;gap:14px;padding:15px 2px;border-bottom:1px solid var(--line2)}
+  .nrow:last-child{border-bottom:none}
+  .nrow .dot{width:7px;height:7px;border-radius:50%;background:var(--faint);flex-shrink:0}
+  .nrow .dot.red{background:var(--bad)} .nrow .dot.amber{background:var(--warn)}
+  .nicon{width:38px;height:38px;border-radius:10px;background:#f0f1f3;color:var(--ink2);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .nrow .body{flex:1;min-width:0}
+  .nrow .ttl{font-weight:600;font-size:14px}
+  .nrow .sub{font-size:12.5px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .nrow .when{font-size:12px;color:var(--muted);margin-top:5px}
+  .nrow .right{display:flex;align-items:center;gap:8px;flex-shrink:0}
+  .nrow.done .ttl{text-decoration:line-through;color:var(--faint)}
+  .lnk{font-size:12.5px;color:var(--ink2);cursor:pointer;border:1px solid var(--line);border-radius:8px;padding:6px 12px;background:var(--card)}
+  .lnk:hover{background:#f3f4f6}
+  .stat-sm{border:1px solid var(--line2);border-radius:11px;padding:13px 14px}
+  .stat-sm .lab{font-size:11.5px;color:var(--muted);display:flex;align-items:center;gap:6px}
+  .stat-sm .val{font-size:21px;font-weight:700;margin-top:5px;letter-spacing:-.5px}
+  .side-row{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:9px 0;border-bottom:1px solid var(--line2);font-size:13px}
+  .side-row:last-child{border-bottom:none}
+  .side-row .a{font-weight:600}
+  .agenda{display:flex;gap:10px;padding:9px 0;border-bottom:1px solid var(--line2);font-size:13px}
+  .agenda:last-child{border-bottom:none}
+  .agenda .t{font-weight:600;color:var(--ink);white-space:nowrap}
+</style>
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="brand"><div class="mark">S</div><div><h1>SalesBot</h1><p>IR SALES INTELLIGENCE</p></div></div>
+    <nav class="nav">
+      <a id="nav-dashboard" onclick="setView('dashboard')"><svg class="ico" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Dashboard</a>
+      <a id="nav-chat" onclick="setView('chat')"><svg class="ico" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Chat</a>
+      <a id="nav-data" onclick="setView('data')"><svg class="ico" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.7 4 3 9 3s9-1.3 9-3V5"/><path d="M3 12c0 1.7 4 3 9 3s9-1.3 9-3"/></svg>Data</a>
+      <a id="nav-notif" onclick="setView('notif')" style="justify-content:space-between"><span style="display:flex;align-items:center;gap:11px"><svg class="ico" viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>Notifications</span><span class="navcount" id="navNotifCount"></span></a>
+    </nav>
+    <div class="who">
+      <label>Logged in as</label>
+      <div class="sel"><div class="av" id="whoAv">?</div>
+        <div style="flex:1;min-width:0">
+          <div id="whoName" style="font-weight:600;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">—</div>
+          <div id="whoRole" style="font-size:11px;color:var(--faint)"></div>
+        </div>
+        <span onclick="logout()" title="สลับผู้ใช้" style="cursor:pointer;color:var(--faint)"><svg class="ico" viewBox="0 0 24 24" style="width:16px;height:16px"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5M21 12H9"/></svg></span>
+      </div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div><h2 id="viewTitle">Dashboard</h2><div class="sub" id="viewSub"></div></div>
+      <div class="bell" onclick="setView('notif')"><svg class="ico" viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg><span class="badge" id="notifBadge">0</span></div>
+    </div>
+
+    <div class="scroll">
+      <!-- DASHBOARD -->
+      <div id="view-dashboard">
+        <div class="stats" id="statCards"></div>
+        <div class="card" style="margin-bottom:18px">
+          <div class="card-head"><div><h3>ภาพรวมตาม AE</h3><div class="sub">การมอบหมายงานและสถานะสัญญาของแต่ละคน — คลิกเพื่อดูรายชื่อลูกค้า</div></div></div>
+          <div style="padding:4px 8px"><table id="aeTable"></table></div>
+        </div>
+        <div class="card">
+          <div class="card-head"><div><h3>งานติดตาม</h3><div class="sub">งานที่บันทึก/สั่งลงตารางผ่านแชท — ติ๊กเมื่อทำเสร็จ</div></div></div>
+          <div id="taskList" style="padding:8px 20px 16px"></div>
+        </div>
+      </div>
+
+      <!-- CHAT -->
+      <div id="view-chat" style="display:none">
+        <div class="card">
+          <div class="chat-body" id="chatBody"></div>
+          <div class="chat-input">
+            <form onsubmit="sendChat(event)">
+              <input id="chatInput" placeholder="พิมพ์คำถาม เช่น ลูกค้า ACE หมดสัญญาเมื่อไหร่ / ลูกค้าที่ฉันดูแล active กี่ราย" autocomplete="off">
+              <button type="submit"><svg class="ico" viewBox="0 0 24 24"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4z"/></svg></button>
+            </form>
+            <div class="chat-note">SalesBot อาจมีข้อผิดพลาดได้ โปรดตรวจสอบข้อมูลสำคัญอีกครั้ง</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- DATA -->
+      <div id="view-data" style="display:none">
+        <div class="card">
+          <div class="card-head">
+            <div><h3>ข้อมูลลูกค้า / สัญญา</h3><div class="sub">ค้นหา ดู เพิ่ม และแก้ไขได้</div></div>
+            <div style="display:flex;gap:9px">
+              <button class="btn" onclick="exportCsv()"><svg class="ico" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>Export CSV</button>
+              <button class="btn primary" onclick="openModal()"><svg class="ico" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>เพิ่มลูกค้า</button>
+            </div>
+          </div>
+          <div class="tabs">
+            <button class="active" id="tab-all" onclick="setTab('all')">ลูกค้าทั้งหมด</button>
+            <button id="tab-expiring" onclick="setTab('expiring')">สัญญาใกล้หมดอายุ</button>
+            <button id="tab-contacts" onclick="setTab('contacts')">IR Contact</button>
+          </div>
+          <div class="toolbar">
+            <div class="search"><svg class="ico" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+              <input id="searchBox" placeholder="ค้นหาบริษัท, Account, AE..." oninput="debouncedReload()"></div>
+            <span id="aeChip"></span>
+            <select class="flt" id="statusFilter" onchange="reload()">
+              <option value="">สถานะทั้งหมด</option><option>Active</option><option>Expired</option><option>Cancelled</option>
+            </select>
+          </div>
+          <div style="padding:0 8px"><table id="dataTable"></table></div>
+          <div class="pager"><span id="pagerInfo"></span><div class="pages" id="pagerPages"></div></div>
+        </div>
+      </div>
+
+      <!-- NOTIFICATIONS -->
+      <div id="view-notif" style="display:none">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;gap:12px">
+          <div class="chips" id="notifChips"></div>
+          <button class="btn primary" style="flex-shrink:0" onclick="openTaskModal()"><svg class="ico" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>สร้างงานใหม่</button>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 330px;gap:18px;align-items:start">
+          <div class="card">
+            <div class="card-head"><h3>งานที่ต้องดำเนินการ</h3></div>
+            <div id="notifList" style="padding:2px 20px 8px"></div>
+          </div>
+          <div>
+            <div class="card" style="margin-bottom:16px">
+              <div class="card-head"><h3>สรุปงานของคุณ</h3></div>
+              <div id="notifSummary" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:16px"></div>
+            </div>
+            <div class="card" style="margin-bottom:16px">
+              <div class="card-head"><h3>สัญญาใกล้หมดอายุ</h3></div>
+              <div id="notifExp" style="padding:6px 18px 14px"></div>
+            </div>
+            <div class="card">
+              <div class="card-head"><h3>ปฏิทินงาน</h3></div>
+              <div id="notifAgenda" style="padding:6px 18px 16px"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Create task modal -->
+  <div class="modal" id="taskModal"><div class="box" style="width:440px">
+    <h3>สร้างงานใหม่</h3>
+    <div class="fld" style="margin-bottom:13px"><label>เรื่อง / รายละเอียด *</label><input id="t_note" placeholder="เช่น โทรนัดต่อสัญญา, เตรียม Proposal"></div>
+    <div class="grid2">
+      <div class="fld"><label>วันที่</label><input id="t_date" type="date"></div>
+      <div class="fld"><label>เวลา</label><input id="t_time" type="time"></div>
+    </div>
+    <div class="fld" style="margin-top:13px"><label>ลูกค้า (ถ้ามี)</label><input id="t_account" placeholder="Account เช่น ACE (เว้นว่างได้)"></div>
+    <div class="actions"><span></span><div class="right">
+      <button class="btn" onclick="document.getElementById('taskModal').classList.remove('open')">ยกเลิก</button>
+      <button class="btn primary" onclick="saveTask()">บันทึก</button>
+    </div></div>
+  </div></div>
+
+  <!-- Login modal -->
+  <div class="modal" id="loginModal"><div class="box" style="width:420px">
+    <div style="display:flex;align-items:center;gap:11px;margin-bottom:6px">
+      <div class="mark" style="width:34px;height:34px;border-radius:9px;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700">S</div>
+      <div><h3 style="margin:0">เข้าสู่ระบบ SalesBot</h3><div style="font-size:12px;color:var(--muted)">IR Sales Intelligence</div></div>
+    </div>
+    <p style="font-size:12.5px;color:var(--muted);margin:8px 0 16px">กรอกข้อมูลเพื่อให้ระบบจดจำคุณและงานของคุณได้</p>
+    <div class="fld" style="margin-bottom:13px"><label>อีเมล *</label><input id="lg_email" placeholder="name@shareinvestor.com"></div>
+    <div class="fld" style="margin-bottom:13px"><label>ชื่อ-สกุล *</label><input id="lg_name" placeholder="เช่น Narisara P."></div>
+    <div class="grid2">
+      <div class="fld"><label>ชื่อเล่น / AE</label><input id="lg_ae" list="aeList" placeholder="เช่น Maprang"></div>
+      <div class="fld"><label>บทบาท</label><select id="lg_role"><option value="ae">AE (ดูแลลูกค้า)</option><option value="lead">Lead (หัวหน้าทีม)</option></select></div>
+    </div>
+    <button class="btn primary" style="width:100%;justify-content:center;margin-top:18px" onclick="doLogin()">เข้าสู่ระบบ</button>
+  </div></div>
+
+  <!-- Add/Edit modal -->
+  <div class="modal" id="modal"><div class="box">
+    <h3 id="modalTitle">เพิ่มลูกค้าใหม่</h3>
+    <div class="grid2">
+      <div class="fld"><label>Account *</label><input id="f_account"></div>
+      <div class="fld"><label>มอบหมายให้ (AE-IR)</label><input id="f_ae_ir" list="aeList" placeholder="พิมพ์หรือเลือก"><datalist id="aeList"></datalist></div>
+      <div class="fld"><label>Company Name (EN)</label><input id="f_company_name_en"></div>
+      <div class="fld"><label>Company Name (TH)</label><input id="f_company_name_th"></div>
+      <div class="fld"><label>Product</label><select id="f_contract_type"><option value="">-</option><option>IR</option><option>IR+WD</option><option>WD</option></select></div>
+      <div class="fld"><label>Status</label><select id="f_contract_status"><option value="">-</option><option>Active</option><option>Expired</option><option>Cancelled</option></select></div>
+      <div class="fld"><label>Effective Date</label><input id="f_effective_date" type="date"></div>
+      <div class="fld"><label>Expiry Date</label><input id="f_expiry_date" type="date"></div>
+      <div class="fld"><label>มูลค่า (Latest Value)</label><input id="f_latest_value" type="number"></div>
+      <div class="fld"><label>Grade</label><input id="f_grade"></div>
+      <div class="fld"><label>Contact Email</label><input id="f_contact_email"></div>
+      <div class="fld"><label>Industry</label><input id="f_industry"></div>
+    </div>
+
+    <div id="fuSection" style="display:none">
+      <div class="section-t">งานติดตาม / โน้ต (Follow-up)</div>
+      <div id="fuList"></div>
+      <div class="fu-add">
+        <input id="fuNote" placeholder="เพิ่มงานติดตาม เช่น โทรนัดต่อสัญญา">
+        <input id="fuDue" type="date">
+        <button class="btn" onclick="addFollowup()">เพิ่ม</button>
+      </div>
+    </div>
+
+    <div class="actions">
+      <span></span>
+      <div class="right">
+        <button class="btn" onclick="closeModal()">ยกเลิก</button>
+        <button class="btn primary" onclick="saveCustomer()">บันทึก</button>
+      </div>
+    </div>
+  </div></div>
+
+<script>
+const API = "";
+let AES = [];
+let me = JSON.parse(localStorage.getItem("salesbot_me") || "null");  // {email,name,ae,role}
+let state = { view:"dashboard", tab:"all", page:1, pageSize:8, editing:null, aeFilter:"" };
+const isTeam = () => !me || me.role==="lead" || !me.ae;   // lead/ไม่มี AE = มุมมองทั้งทีม
+const meAE = () => (me && me.role!=="lead") ? (me.ae||"") : "";
+
+const fmtMoney = v => v==null||v==="" ? "-" : Number(v).toLocaleString("th-TH",{maximumFractionDigits:0});
+const fmtDate = s => { if(!s) return "-"; const d=new Date(s); return isNaN(d)?s:d.toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}); };
+const esc = s => (s==null?"":String(s)).replace(/</g,"&lt;");
+function renderMd(t){
+  let s=esc(t||"-");
+  s=s.replace(/\n{2,}/g,"\n");                                          // ลดช่องว่างที่กว้างเกิน
+  s=s.replace(/^[ \t]*#{1,6}[ \t]+(.+?)\s*$/gm,'<span class="md-h">$1</span>'); // หัวข้อ
+  s=s.replace(/\*\*(.+?)\*\*/g,"<strong>$1</strong>");                  // **bold** → ตัวหนา
+  s=s.replace(/(^|\n)[ \t]*[-•][ \t]+/g,"$1 • ");                  // bullet สม่ำเสมอ + ย่อหน้า
+  return s;
+}
+function statusBadge(st){const m={Active:"b-ok",Expired:"b-bad",Cancelled:"b-mut"};return `<span class="badge ${m[st]||'b-mut'}">${esc(st)||'-'}</span>`;}
+function dateCls(es){return es==="expired"?"d-bad":(es==="expiring_soon"?"d-warn":"");}
+
+/* ── login / identity ── */
+function renderWho(){
+  document.getElementById("whoAv").textContent=(me.name||me.email||"?")[0].toUpperCase();
+  document.getElementById("whoName").textContent=me.name||me.email;
+  document.getElementById("whoRole").textContent=(me.role==="lead"?"Lead":"AE")+(me.ae?" · "+me.ae:"");
+}
+async function doLogin(){
+  const email=document.getElementById("lg_email").value.trim();
+  const name=document.getElementById("lg_name").value.trim();
+  if(!email||!name){alert("กรุณากรอกอีเมลและชื่อ-สกุล");return;}
+  me={email,name,ae:document.getElementById("lg_ae").value.trim(),role:document.getElementById("lg_role").value};
+  localStorage.setItem("salesbot_me",JSON.stringify(me));
+  await fetch(`${API}/api/profile`,{method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({user_email:me.email,full_name:me.name,ae_name:me.ae||null})});
+  document.getElementById("loginModal").classList.remove("open");
+  renderWho(); boot();
+}
+function logout(){ localStorage.removeItem("salesbot_me"); me=null; document.getElementById("loginModal").classList.add("open"); }
+
+/* ── view switching ── */
+const SUBS={dashboard:"ภาพรวมทีมและการมอบหมายงาน",chat:"สอบถามข้อมูลลูกค้า / สัญญา / Follow-up",
+  data:"ข้อมูลลูกค้า / สัญญา / IR Contact",notif:"งานที่กำลังจะถึง / สัญญาใกล้หมดอายุ / Follow-up"};
+const TITLES={dashboard:"Dashboard",chat:"Chat",data:"Data",notif:"Notifications"};
+function setView(v){
+  state.view=v;
+  ["dashboard","chat","data","notif"].forEach(x=>{
+    document.getElementById("view-"+x).style.display = x===v?"block":"none";
+    document.getElementById("nav-"+x).classList.toggle("active",x===v);
+  });
+  document.getElementById("viewTitle").textContent = TITLES[v];
+  document.getElementById("viewSub").textContent = SUBS[v];
+  if(v==="dashboard")loadDashboard();
+  if(v==="data")reload();
+  if(v==="notif")loadNotifPage();
+}
+
+/* ── Dashboard ── */
+async function loadDashboard(){
+  const d=await (await fetch(`${API}/api/dashboard`)).json();
+  const t=d.totals;
+  const cards=[
+    {lab:"ลูกค้าทั้งหมด",val:t.customers,dot:""},
+    {lab:"มูลค่ารวม (บาท)",val:fmtMoney(t.total_value),dot:""},
+    {lab:"Active",val:t.active,dot:"dot-ok"},
+    {lab:"ใกล้หมดอายุ",val:t.expiring_soon,dot:"dot-warn"},
+    {lab:"หมดอายุ",val:t.expired,dot:"dot-bad"},
+    {lab:"ยังไม่มอบหมาย",val:t.unassigned,dot:"dot-mut"},
+  ];
+  document.getElementById("statCards").innerHTML = cards.map(c=>
+    `<div class="stat"><div class="lab">${c.dot?`<span class="dot ${c.dot}"></span>`:""}${c.lab}</div><div class="val">${c.val}</div></div>`).join("");
+  const t2=document.getElementById("aeTable");
+  t2.innerHTML="<thead><tr><th>AE-IR</th><th class='num'>ลูกค้า</th><th class='num'>Active</th><th class='num'>ใกล้หมด</th><th class='num'>หมดอายุ</th><th class='num'>มูลค่ารวม</th></tr></thead><tbody>"+
+    d.by_ae.map(a=>`<tr class="clickable" onclick="gotoAE('${esc(a.ae)}')">
+      <td class="acct">${esc(a.ae)} ${a.ae===meAE()?'<span class="badge b-mut" style="margin-left:4px">คุณ</span>':''}</td>
+      <td class="num">${a.customers}</td><td class="num">${a.active}</td>
+      <td class="num">${a.expiring_soon?`<span class="d-warn">${a.expiring_soon}</span>`:0}</td>
+      <td class="num">${a.expired?`<span class="d-bad">${a.expired}</span>`:0}</td>
+      <td class="num">${fmtMoney(a.total_value)}</td></tr>`).join("")+"</tbody>";
+  loadTasks();
+}
+async function loadTasks(){
+  const q=meAE()?`?ae=${encodeURIComponent(meAE())}`:"";
+  const d=await (await fetch(`${API}/api/followups${q}`)).json();
+  const el=document.getElementById("taskList");
+  if(!d.length){el.innerHTML='<div class="mut" style="font-size:13px;padding:6px 0">ยังไม่มีงานติดตาม — ลองพิมพ์ในแชท เช่น "ลงตารางวันนี้ 14:00 โทรหา ACE"</div>';return;}
+  el.innerHTML=d.map(f=>`<div class="fu ${f.done?'done':''}">
+    <input type="checkbox" ${f.done?'checked':''} onchange="toggleTask(${f.id},this.checked)">
+    <div class="body">${esc(f.note)}${f.account?` <span class="badge b-mut">${esc(f.account)}</span>`:""}
+      <div class="meta">${f.due_date?fmtDate(f.due_date):'ไม่มีกำหนด'}${f.due_time?' '+f.due_time+' น.':''}${f.ae_ir?' · AE '+esc(f.ae_ir):''}${f.created_by?' · โดย '+esc(f.created_by):''}</div></div>
+    <span class="del" onclick="delTask(${f.id})">×</span></div>`).join("");
+}
+async function toggleTask(id,done){await fetch(`${API}/api/followups/${id}`,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({done})});loadTasks();}
+async function delTask(id){await fetch(`${API}/api/followups/${id}`,{method:"DELETE"});loadTasks();}
+function gotoAE(ae){ state.aeFilter = ae==="ไม่ระบุ"?"":ae; state.tab="all"; state.page=1;
+  setView("data"); setTab("all"); }
+
+/* ── Data ── */
+let _t; function debouncedReload(){clearTimeout(_t);_t=setTimeout(reload,300);}
+function renderAeChip(){
+  document.getElementById("aeChip").innerHTML = state.aeFilter
+    ? `<span class="chip">AE: <b>${esc(state.aeFilter)}</b><span class="x" onclick="clearAe()">✕</span></span>` : "";
+}
+function clearAe(){state.aeFilter="";state.page=1;reload();}
+async function reload(){
+  renderAeChip();
+  if(state.tab==="contacts")return loadContacts();
+  if(state.tab==="expiring")return loadExpiring();
+  return loadCustomers();
+}
+function setTab(t){state.tab=t;state.page=1;
+  ["all","expiring","contacts"].forEach(x=>document.getElementById("tab-"+x).classList.toggle("active",x===t));
+  document.getElementById("statusFilter").style.display=t==="all"?"block":"none";
+  reload();
+}
+async function loadCustomers(){
+  const q=new URLSearchParams({page:state.page,page_size:state.pageSize});
+  const s=document.getElementById("searchBox").value.trim(); if(s)q.set("search",s);
+  const st=document.getElementById("statusFilter").value; if(st)q.set("status",st);
+  if(state.aeFilter)q.set("ae",state.aeFilter);
+  const d=await (await fetch(`${API}/api/customers?${q}`)).json();
+  renderTable(["Account","Company Name","AE-IR","Expiry Date","Status","Product","มูลค่า"],
+    d.items.map(c=>({account:c.account,cells:[`<span class="acct">${esc(c.account)}</span>`,esc(c.company_name)||"-",esc(c.ae_ir)||'<span class="mut">—</span>',
+      `<span class="${dateCls(c.expiry_state)}">${fmtDate(c.expiry_date)}</span>`,statusBadge(c.status),esc(c.product)||"-",
+      `<span class="num" style="display:block">${fmtMoney(c.value)}</span>`]})),[0,0,0,0,0,0,1]);
+  renderPager(d);
+}
+async function loadExpiring(){
+  const q=meAE()?`?ae=${encodeURIComponent(meAE())}`:"";
+  const d=await (await fetch(`${API}/api/customers/expiring${q}`)).json();
+  renderTable(["Account","Company Name","AE-IR","Expiry Date","คงเหลือ","มูลค่า"],
+    d.items.map(c=>({account:c.account,cells:[`<span class="acct">${esc(c.account)}</span>`,esc(c.company_name)||"-",esc(c.ae_ir)||"—",
+      `<span class="${dateCls(c.expiry_state)}">${fmtDate(c.expiry_date)}</span>`,
+      c.expiry_state==="expired"?`<span class="badge b-bad">หมดแล้ว ${-c.days_to_expiry} วัน</span>`:`<span class="badge b-warn">อีก ${c.days_to_expiry} วัน</span>`,
+      `<span class="num" style="display:block">${fmtMoney(c.value)}</span>`]})),[0,0,0,0,0,1]);
+  document.getElementById("pagerInfo").textContent=`${d.count} รายการ — หมดแล้ว ${d.expired_count} · ใกล้หมด ${d.expiring_soon_count}${meAE()?` (ของ ${meAE()})`:""}`;
+  document.getElementById("pagerPages").innerHTML="";
+}
+async function loadContacts(){
+  const s=document.getElementById("searchBox").value.trim();
+  const d=await (await fetch(`${API}/api/customers/contacts${s?`?search=${encodeURIComponent(s)}`:""}`)).json();
+  renderTable(["Account","Company Name","Grade","IR Team","Email","cc."],
+    d.map(c=>({account:c.account,cells:[`<span class="acct">${esc(c.account)}</span>`,esc(c.company_name)||"-",esc(c.grade)||"-",esc(c.ir_team)||"-",esc(c.contact_email)||"-",esc(c.cc_emails)||'<span class="mut">—</span>']})),[]);
+  document.getElementById("pagerInfo").textContent=`${d.length} รายชื่อ`;
+  document.getElementById("pagerPages").innerHTML="";
+}
+function renderTable(headers,rows,nums){
+  nums=nums||[];
+  const t=document.getElementById("dataTable");
+  t.innerHTML="<thead><tr>"+headers.map((h,i)=>`<th class="${nums[i]?'num':''}">${h}</th>`).join("")+"</tr></thead><tbody>"+
+    (rows.length? rows.map(r=>`<tr class="clickable" onclick="editCustomer('${r.account}')">`+r.cells.map((c,i)=>`<td class="${nums[i]?'num':''}">${c}</td>`).join("")+"</tr>").join("")
+      :`<tr><td colspan="${headers.length}"><div class="empty">ไม่พบข้อมูล</div></td></tr>`)+"</tbody>";
+}
+function renderPager(d){
+  document.getElementById("pagerInfo").textContent=`แสดง ${d.items.length} จาก ${d.total} รายการ`;
+  const w=document.getElementById("pagerPages");w.innerHTML="";
+  const mk=(l,pg,dis,act)=>{const b=document.createElement("button");b.textContent=l;b.disabled=dis;if(act)b.classList.add("active");b.onclick=()=>{state.page=pg;reload();};w.appendChild(b);};
+  mk("‹",state.page-1,state.page<=1);
+  let pages=[];for(let i=1;i<=d.pages;i++){if(i<=1||i>d.pages-1||Math.abs(i-state.page)<=1)pages.push(i);else if(pages[pages.length-1]!=="…")pages.push("…");}
+  pages.forEach(p=>p==="…"?w.insertAdjacentHTML("beforeend","<span style='padding:0 4px;color:var(--faint)'>…</span>"):mk(p,p,false,p===state.page));
+  mk("›",state.page+1,state.page>=d.pages);
+}
+function exportCsv(){
+  const q=new URLSearchParams();
+  const s=document.getElementById("searchBox").value.trim();if(s)q.set("search",s);
+  const st=document.getElementById("statusFilter").value;if(st)q.set("status",st);
+  if(state.aeFilter)q.set("ae",state.aeFilter);
+  window.open(`${API}/api/export/customers?${q}`,"_blank");
+}
+
+/* ── Notifications page ── */
+let notifData={tasks:[],exp:[]}, notifFilter="all";
+const startOfDay=d=>{const x=new Date(d);x.setHours(0,0,0,0);return x;};
+function daysFromToday(dateStr){ if(!dateStr)return null; return Math.round((startOfDay(dateStr)-startOfDay(new Date()))/86400000); }
+
+async function loadNotifBadge(){
+  // badge = สัญญาใกล้หมด + งานค้างที่ถึง/เลยกำหนด
+  const [n,t]=await Promise.all([
+    fetch(`${API}/api/notifications`).then(r=>r.json()),
+    fetch(`${API}/api/followups?pending=true`).then(r=>r.json()),
+  ]);
+  const dueTasks=t.filter(x=>{const d=daysFromToday(x.due_date);return d!==null&&d<=0;}).length;
+  const c=n.count+dueTasks;
+  document.getElementById("notifBadge").textContent=c;
+  document.getElementById("navNotifCount").textContent=c;
+}
+
+async function loadNotifPage(){
+  const [exp,tasks]=await Promise.all([
+    fetch(`${API}/api/customers/expiring`).then(r=>r.json()),
+    fetch(`${API}/api/followups?pending=false`).then(r=>r.json()),
+  ]);
+  notifData={tasks,exp:exp.items||[]};
+  renderNotifChips();
+  renderNotifList();
+  renderNotifSide();
+}
+
+function notifItems(){
+  // รวมงาน + สัญญาใกล้หมด เป็นรายการเดียว พร้อม metadata
+  const out=[];
+  notifData.tasks.forEach(t=>{
+    const d=daysFromToday(t.due_date);
+    out.push({kind:t.source==="chat"?"chat":"task",id:t.id,done:t.done,
+      title:t.note,sub:(t.account?`${t.account}${t.company_name?" · "+t.company_name:""}`:"งานทั่วไป")+(t.created_by?` · โดย ${t.created_by}`:""),
+      account:t.account,due:t.due_date,dueTime:t.due_time,days:d});
+  });
+  notifData.exp.forEach(e=>{
+    out.push({kind:"expiring",done:false,
+      title:e.expiry_state==="expired"?"สัญญาหมดอายุ (Overdue)":"สัญญาใกล้หมดอายุ",
+      sub:`${e.account} · ${e.company_name||""}`+(e.ae_ir?` · ${e.ae_ir}`:""),
+      account:e.account,due:e.expiry_date,product:e.product,days:e.days_to_expiry,state:e.expiry_state});
+  });
+  return out;
+}
+function passFilter(it,f){
+  if(f==="all")return true;
+  if(f==="today")return it.days===0;
+  if(f==="week")return it.days!==null&&it.days>=0&&it.days<=7;
+  if(f==="expiring")return it.kind==="expiring";
+  if(f==="followup")return it.kind==="task"||it.kind==="chat";
+  if(f==="chat")return it.kind==="chat";
+  return true;
+}
+function renderNotifChips(){
+  const items=notifItems();
+  const defs=[["all","ทั้งหมด"],["today","วันนี้"],["week","7 วันข้างหน้า"],["expiring","สัญญาใกล้หมดอายุ"],["followup","Follow-up"],["chat","จาก Chat"]];
+  document.getElementById("notifChips").innerHTML=defs.map(([k,label])=>{
+    const n=items.filter(it=>passFilter(it,k)).length;
+    return `<button class="chip-f ${k===notifFilter?'active':''}" onclick="setNotifFilter('${k}')">${label}<span class="n">${n}</span></button>`;
+  }).join("");
+}
+function setNotifFilter(f){notifFilter=f;renderNotifChips();renderNotifList();}
+
+function badgeFor(it){
+  if(it.kind!=="expiring"){
+    if(it.done)return '<span class="badge b-ok">เสร็จแล้ว</span>';
+    if(it.days===null)return '';
+    if(it.days<0)return '<span class="badge b-bad">เลยกำหนด</span>';
+    if(it.days===0)return '<span class="badge b-warn">วันนี้</span>';
+    if(it.days===1)return '<span class="badge b-warn">พรุ่งนี้</span>';
+    return `<span class="badge b-mut">${it.days} วัน</span>`;
+  }
+  if(it.state==="expired")return '<span class="badge b-bad">Overdue</span>';
+  return `<span class="badge b-warn">${it.days} วัน</span>`;
+}
+function iconFor(kind){
+  if(kind==="expiring")return '<svg class="ico" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>';
+  if(kind==="chat")return '<svg class="ico" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>';
+  return '<svg class="ico" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>';
+}
+function renderNotifList(){
+  const items=notifItems().filter(it=>passFilter(it,notifFilter))
+    .sort((a,b)=>(a.days==null?9999:a.days)-(b.days==null?9999:b.days));
+  const el=document.getElementById("notifList");
+  if(!items.length){el.innerHTML='<div class="empty">ไม่มีรายการ</div>';return;}
+  el.innerHTML=items.map(it=>{
+    const urgent=it.days!=null&&it.days<0?'red':(it.days===0?'amber':'');
+    const whenTxt=it.due?(fmtDate(it.due)+(it.dueTime?` ${it.dueTime} น.`:"")
+       +(it.days!=null?` · ${it.days<0?`เลย ${-it.days} วัน`:(it.days===0?"วันนี้":`อีก ${it.days} วัน`)}`:"")):"ไม่มีกำหนด";
+    const act=it.kind==="expiring"
+      ? `<button class="lnk" onclick="editCustomer('${it.account}')">ดูรายละเอียด</button>`
+      : (it.done?`<button class="lnk" onclick="reopenTask(${it.id})">เปิดใหม่</button>`
+                : `<button class="lnk" onclick="snoozeTask(${it.id},'${it.due||''}')">เลื่อน</button><button class="btn" onclick="doneTask(${it.id})">ทำเสร็จ</button>`);
+    return `<div class="nrow ${it.done?'done':''}">
+      <span class="dot ${urgent}"></span>
+      <span class="nicon">${iconFor(it.kind)}</span>
+      <div class="body"><div class="ttl">${esc(it.title)}</div><div class="sub">${esc(it.sub)}</div>
+        <div class="when">${whenTxt}${it.product?` · <span class="badge b-mut">${esc(it.product)}</span>`:""}</div></div>
+      <div class="right">${badgeFor(it)}${act}</div></div>`;
+  }).join("");
+}
+function renderNotifSide(){
+  const tasks=notifData.tasks;
+  const pending=tasks.filter(t=>!t.done).length, done=tasks.filter(t=>t.done).length;
+  document.getElementById("notifSummary").innerHTML=[
+    {lab:"ทั้งหมด",val:tasks.length,dot:""},
+    {lab:"ยังไม่เสร็จ",val:pending,dot:"dot-warn"},
+    {lab:"ใกล้หมดอายุ",val:notifData.exp.length,dot:"dot-bad"},
+    {lab:"เสร็จแล้ว",val:done,dot:"dot-ok"},
+  ].map(c=>`<div class="stat-sm"><div class="lab">${c.dot?`<span class="dot ${c.dot}"></span>`:""}${c.lab}</div><div class="val">${c.val}</div></div>`).join("");
+  document.getElementById("notifExp").innerHTML=notifData.exp.slice(0,5).map(e=>
+    `<div class="side-row"><span class="a">${esc(e.account)}</span>
+      <span><span class="${dateCls(e.expiry_state)}">${fmtDate(e.expiry_date)}</span>
+      <span class="mut"> · ${e.expiry_state==="expired"?`เลย ${-e.days_to_expiry}d`:`${e.days_to_expiry}d`}</span></span></div>`).join("")
+    || '<div class="mut" style="font-size:12.5px;padding:6px 0">ไม่มี</div>';
+  const agenda=notifData.tasks.filter(t=>!t.done&&t.due_date).sort((a,b)=>new Date(a.due_date)-new Date(b.due_date)).slice(0,6);
+  document.getElementById("notifAgenda").innerHTML=agenda.map(t=>
+    `<div class="agenda"><span class="t">${fmtDate(t.due_date)}${t.due_time?" "+t.due_time:""}</span><span>${esc(t.note)}${t.account?` · ${esc(t.account)}`:""}</span></div>`).join("")
+    || '<div class="mut" style="font-size:12.5px;padding:6px 0">ยังไม่มีงานที่กำหนดวัน</div>';
+}
+async function doneTask(id){await fetch(`${API}/api/followups/${id}`,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({done:true})});loadNotifPage();loadNotifBadge();}
+async function reopenTask(id){await fetch(`${API}/api/followups/${id}`,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({done:false})});loadNotifPage();loadNotifBadge();}
+async function snoozeTask(id,due){
+  const base=due?new Date(due):new Date(); base.setDate(base.getDate()+1);
+  const nd=base.toISOString().slice(0,10);
+  await fetch(`${API}/api/followups/${id}`,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({due_date:nd})});
+  loadNotifPage();loadNotifBadge();
+}
+/* create task */
+function openTaskModal(){["t_note","t_date","t_time","t_account"].forEach(i=>document.getElementById(i).value="");document.getElementById("taskModal").classList.add("open");}
+async function saveTask(){
+  const note=document.getElementById("t_note").value.trim();
+  if(!note){alert("กรุณากรอกเรื่อง/รายละเอียด");return;}
+  const body={note,due_date:document.getElementById("t_date").value||null,
+    due_time:document.getElementById("t_time").value||null,
+    account:document.getElementById("t_account").value.trim().toUpperCase()||null,created_by:me.name};
+  const r=await fetch(`${API}/api/followups`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+  if(r.ok){document.getElementById("taskModal").classList.remove("open");loadNotifPage();loadNotifBadge();}
+  else{const e=await r.json();alert("ผิดพลาด: "+(e.detail||r.status));}
+}
+
+/* ── Chat ── */
+function addMsg(text,who){
+  const b=document.getElementById("chatBody");
+  const tm=new Date().toLocaleTimeString("th-TH",{hour:"2-digit",minute:"2-digit"});
+  const icU=`<svg class="ico" viewBox="0 0 24 24"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`;
+  const icB=`<svg class="ico" viewBox="0 0 24 24"><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M12 8V4M9 14h0M15 14h0"/></svg>`;
+  b.insertAdjacentHTML("beforeend",who==="user"
+    ?`<div class="msg user"><div class="ic">${icU}</div><div><div class="bubble">${text}</div><div class="time">${tm}</div></div></div>`
+    :`<div class="msg"><div class="ic">${icB}</div><div><div class="bubble">${text}</div><div class="time">${tm}</div></div></div>`);
+  b.scrollTop=b.scrollHeight;
+}
+async function sendChat(e){
+  e.preventDefault();
+  const inp=document.getElementById("chatInput");const msg=inp.value.trim();if(!msg)return;
+  addMsg(esc(msg),"user");inp.value="";
+  addMsg('<span class="mut">กำลังคิด…</span>',"bot");
+  const last=document.getElementById("chatBody").lastElementChild;
+  try{
+    const d=await (await fetch(`${API}/api/chat`,{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({message:msg,user_email:me.email,user_name:me.name,ae_name:meAE()||null})})).json();
+    last.querySelector(".bubble").innerHTML=renderMd(d.reply||"-");
+  }catch(err){last.querySelector(".bubble").innerHTML="เกิดข้อผิดพลาดในการเชื่อมต่อ";}
+  loadNotifBadge(); if(state.view==="dashboard")loadTasks(); if(state.view==="notif")loadNotifPage();
+}
+
+/* ── Modal + Follow-ups ── */
+const FIELDS=["account","ae_ir","company_name_en","company_name_th","contract_type","contract_status","effective_date","expiry_date","latest_value","grade","contact_email","industry"];
+function openModal(){state.editing=null;document.getElementById("modalTitle").textContent="เพิ่มลูกค้าใหม่";
+  FIELDS.forEach(f=>document.getElementById("f_"+f).value="");
+  if(meAE())document.getElementById("f_ae_ir").value=meAE();
+  document.getElementById("f_account").disabled=false;
+  document.getElementById("fuSection").style.display="none";
+  document.getElementById("modal").classList.add("open");}
+async function editCustomer(acct){
+  const c=await (await fetch(`${API}/api/customers/${encodeURIComponent(acct)}`)).json();
+  state.editing=acct;document.getElementById("modalTitle").textContent="แก้ไข: "+acct;
+  FIELDS.forEach(f=>document.getElementById("f_"+f).value=c[f]??"");
+  document.getElementById("f_account").disabled=true;
+  document.getElementById("fuSection").style.display="block";
+  loadFollowups(acct);
+  document.getElementById("modal").classList.add("open");
+}
+function closeModal(){document.getElementById("modal").classList.remove("open");}
+async function saveCustomer(){
+  const body={};FIELDS.forEach(f=>{const v=document.getElementById("f_"+f).value.trim();if(v!=="")body[f]=(f==="latest_value")?Number(v):v;});
+  if(!body.account&&!state.editing){alert("กรุณาระบุ Account");return;}
+  let r;
+  if(state.editing)r=await fetch(`${API}/api/customers/${encodeURIComponent(state.editing)}`,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+  else r=await fetch(`${API}/api/customers`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+  if(r.ok){closeModal();if(state.view==="data")reload();else loadDashboard();loadNotifBadge();}
+  else{const e=await r.json();alert("ผิดพลาด: "+(e.detail||r.status));}
+}
+async function loadFollowups(acct){
+  const d=await (await fetch(`${API}/api/customers/${encodeURIComponent(acct)}/followups`)).json();
+  document.getElementById("fuList").innerHTML=d.length?d.map(f=>`
+    <div class="fu ${f.done?'done':''}">
+      <input type="checkbox" ${f.done?'checked':''} onchange="toggleFu(${f.id},this.checked,'${acct}')">
+      <div class="body">${esc(f.note)}<div class="meta">${f.due_date?'กำหนด '+fmtDate(f.due_date)+(f.due_time?' '+f.due_time+' น.':''):'ไม่มีกำหนด'}${f.created_by?' · '+esc(f.created_by):''}</div></div>
+      <span class="del" onclick="delFu(${f.id},'${acct}')">×</span>
+    </div>`).join(""):'<div class="mut" style="font-size:12.5px;padding:4px 0">ยังไม่มีงานติดตาม</div>';
+}
+async function addFollowup(){
+  const note=document.getElementById("fuNote").value.trim();if(!note)return;
+  const due=document.getElementById("fuDue").value;
+  await fetch(`${API}/api/customers/${encodeURIComponent(state.editing)}/followups`,{method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({note,due_date:due||null,created_by:me.name,notify_email:me.email})});
+  document.getElementById("fuNote").value="";document.getElementById("fuDue").value="";
+  loadFollowups(state.editing);
+}
+async function toggleFu(id,done,acct){await fetch(`${API}/api/followups/${id}`,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({done})});loadFollowups(acct);}
+async function delFu(id,acct){await fetch(`${API}/api/followups/${id}`,{method:"DELETE"});loadFollowups(acct);}
+
+/* ── init ── */
+let _greeted=false;
+function boot(){
+  if(!_greeted){
+    addMsg(`สวัสดีค่ะ${me.name?" คุณ"+esc(me.name):""} SalesBot พร้อมช่วยแล้วค่ะ ลองถามได้เลย เช่น "ลูกค้า ACE หมดสัญญาเมื่อไหร่" หรือสั่ง "ลงตารางวันนี้ 14:00 โทรหา ACE"`,"bot");
+    _greeted=true;
+  }
+  renderWho();
+  setView("dashboard");
+  loadNotifBadge();
+}
+(async function(){
+  AES = await (await fetch(`${API}/api/aes`)).json();
+  document.getElementById("aeList").innerHTML = AES.map(a=>`<option value="${a}">`).join("");
+  if(me){ renderWho(); boot(); }
+  else { document.getElementById("loginModal").classList.add("open"); }
+})();
+</script>
+</body>
+</html>

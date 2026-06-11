@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+backend/salesbot.db
+backend/ae_emails.json
+backend/user_smtp.json
+.DS_Store
+# ข้อมูลลูกค้าจริง — ไม่ขึ้น GitHub (วางไฟล์ในเครื่องแล้วรัน import_data.py)
+Data/*.xlsx
