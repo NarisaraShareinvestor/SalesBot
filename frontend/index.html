@@ -430,7 +430,8 @@ function renderMd(t){
   let s=esc(t||"-");
   s=s.replace(/\n{2,}/g,"\n");                                          // ลดช่องว่างที่กว้างเกิน
   s=s.replace(/^[ \t]*#{1,6}[ \t]+(.+?)\s*$/gm,'<span class="md-h">$1</span>'); // หัวข้อ
-  s=s.replace(/\*\*(.+?)\*\*/g,"<strong>$1</strong>");                  // **bold** → ตัวหนา
+  s=s.replace(/\*\*(.+?)\*\*/g,"<strong>$1</strong>");
+  s=s.replace(/\[(.+?)\]\((.+?)\)/g,'<a href="$2" target="_blank" style="color:inherit;text-decoration:underline;cursor:pointer">$1</a>'); // links                  // **bold** → ตัวหนา
   s=s.replace(/(^|\n)[ \t]*[-•][ \t]+/g,"$1 • ");                  // bullet สม่ำเสมอ + ย่อหน้า
   return s;
 }
