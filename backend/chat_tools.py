@@ -19,7 +19,7 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "search_customers",
-            "description": "ค้นหาลูกค้าจากชื่อย่อ (account), ชื่อบริษัท (ไทย/อังกฤษ), หรือ **อีเมลผู้ติดต่อ/cc** แบบบางส่วนได้ — ใช้ตอบ 'อีเมลนี้คือบริษัทไหน' ได้ด้วย คืนรายการย่อ",
+            "description": "ค้นหาลูกค้าจากชื่อย่อ (account), ชื่อบริษัท (ไทย/อังกฤษ), อีเมล, หรือที่อยู่ — คืนรายการย่อ (สถานะ/มูลค่า/วันหมด เท่านั้น). หากต้องการ URL, ที่อยู่, เบอร์ติดต่อ, remark ของลูกค้ารายใด ต้องตามด้วย get_customer(account) เสมอ",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -33,7 +33,7 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "get_customer",
-            "description": "ดึงข้อมูลสัญญาเต็มของลูกค้า 1 ราย จาก account code (เช่น 'ACE'). ใช้ตอบคำถามเจาะจง เช่น วันหมดสัญญา มูลค่า ผู้ติดต่อ",
+            "description": "ดึงข้อมูลครบทุก field ของลูกค้า 1 ราย จาก account code — รวม URL/เว็บไซต์, ที่อยู่ (TH/EN), Zip Code, อีเมลผู้ติดต่อ, CC, grade, ir_team, contract remark, market, industry, sector. **ใช้ทุกครั้งที่ถามเกี่ยวกับ URL/เว็บ/ที่อยู่/ผู้ติดต่อ/รายละเอียด** ของลูกค้ารายนั้น",
             "parameters": {
                 "type": "object",
                 "properties": {
