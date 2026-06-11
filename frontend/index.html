@@ -381,15 +381,19 @@
       <div class="fld"><label>CC Emails</label><input id="f_cc_emails" placeholder="email1, email2"></div>
       <div class="fld" style="grid-column:1/-1"><label>Contract Status Remark</label><input id="f_contract_status_text" placeholder="เช่น ต่อแน่นอน / รอดูงบ Q3"></div>
     </div>
-    <div class="section-t" style="margin-top:14px;margin-bottom:10px">ดัชนี / ที่อยู่ (จาก Excel)</div>
+    <div class="section-t" style="margin-top:14px;margin-bottom:10px">ที่อยู่</div>
+    <div class="grid2">
+      <div class="fld" style="grid-column:1/-1"><label>ที่อยู่ (TH)</label><input id="f_address_th"></div>
+      <div class="fld" style="grid-column:1/-1"><label>Address (EN)</label><input id="f_address_en"></div>
+      <div class="fld"><label>Zip Code</label><input id="f_zip_code"></div>
+    </div>
+
+    <div class="section-t">ดัชนี (จาก Excel)</div>
     <div class="grid2">
       <div class="fld"><label>SET 100</label><select id="fx_set_100"><option value="">-</option><option value="Yes">Yes</option><option value="No">No</option></select></div>
       <div class="fld"><label>SET ESG</label><select id="fx_set_esg"><option value="">-</option><option value="Yes">Yes</option><option value="No">No</option></select></div>
       <div class="fld"><label>AE (recommend)</label><input id="fx_ae_recommend" list="aeList" placeholder="..."></div>
       <div class="fld"><label>Product Pryce ESG</label><input id="fx_product_pryce_esg"></div>
-      <div class="fld" style="grid-column:1/-1"><label>ที่อยู่ (TH)</label><input id="fx_address_th"></div>
-      <div class="fld" style="grid-column:1/-1"><label>Address (EN)</label><input id="fx_address_en"></div>
-      <div class="fld"><label>Zip Code</label><input id="fx_zip_code"></div>
     </div>
 
     <div id="fuSection" style="display:none">
@@ -793,9 +797,9 @@ async function sendChat(e){
 }
 
 /* ── Modal + Follow-ups ── */
-const FIELDS=["account","ae_ir","company_name_en","company_name_th","contract_type","contract_status","effective_date","expiry_date","monthly_payment","latest_value","market","sector","industry","grade","url","ir_team","contact_email","cc_emails","contract_status_text"];
+const FIELDS=["account","ae_ir","company_name_en","company_name_th","contract_type","contract_status","effective_date","expiry_date","monthly_payment","latest_value","market","sector","industry","grade","url","address_th","address_en","zip_code","ir_team","contact_email","cc_emails","contract_status_text"];
 const NUM_FIELDS=new Set(["monthly_payment","latest_value"]);
-const EXTRA_FIELDS=[["set 100","fx_set_100"],["set esg","fx_set_esg"],["ae (recommend)","fx_ae_recommend"],["product pryce esg","fx_product_pryce_esg"],["address (th)","fx_address_th"],["address (en)","fx_address_en"],["zip code","fx_zip_code"]];
+const EXTRA_FIELDS=[["set 100","fx_set_100"],["set esg","fx_set_esg"],["ae (recommend)","fx_ae_recommend"],["product pryce esg","fx_product_pryce_esg"]];
 function openModal(){state.editing=null;document.getElementById("modalTitle").textContent="เพิ่มลูกค้าใหม่";
   FIELDS.forEach(f=>document.getElementById("f_"+f).value="");
   EXTRA_FIELDS.forEach(([,id])=>{const el=document.getElementById(id);if(el)el.value="";});
