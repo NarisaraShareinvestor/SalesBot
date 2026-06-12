@@ -189,7 +189,7 @@
   .navcount{font-size:11px;font-weight:600;background:#eceef1;color:var(--ink2);border-radius:20px;padding:1px 8px;min-width:20px;text-align:center}
   .nav a.active .navcount{background:rgba(255,255,255,.22);color:#fff}
   .chips{display:flex;gap:8px;flex-wrap:wrap}
-  .chip-f{display:inline-flex;align-items:center;gap:8px;padding:8px 14px;border:1px solid var(--line);border-radius:9px;background:var(--card);cursor:pointer;font-size:13px;color:var(--ink2);font-weight:500}
+  .chip-f{display:inline-flex;align-items:center;gap:8px;padding:8px 14px;border:1px solid var(--line);border-radius:9px;background:var(--card);cursor:pointer;font-size:13px;color:var(--ink2);font-weight:500;white-space:nowrap;flex-shrink:0}
   .chip-f:hover{background:#f3f4f6}
   .chip-f.active{background:var(--accent);color:#fff;border-color:var(--accent)}
   .chip-f .n{font-size:11px;background:#eceef1;color:var(--ink2);border-radius:20px;padding:0 7px;font-weight:600}
@@ -244,7 +244,12 @@
     .modal .box{width:94vw;padding:20px 18px}
     .msg{max-width:92%}
     .bell-popup{position:fixed;top:60px;left:10px;right:10px;width:auto}
-    #view-chat .card{height:calc(100vh - 150px)}
+    .notif-grid{grid-template-columns:1fr!important}
+    .notif-grid>*{min-width:0}
+    .nrow .ttl{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .nrow{gap:10px}
+    .nrow .right{flex-direction:column;align-items:flex-end;gap:6px}
+    #view-chat .card{height:calc(100dvh - 140px)}
     .card-head{flex-wrap:wrap;gap:8px}
     .fu-add{flex-wrap:wrap}
     .fu-add input[type=date]{flex:1 0 100%}
@@ -252,7 +257,7 @@
     .search{flex:1 0 100%}
     .tabs{overflow-x:auto;flex-wrap:nowrap}
     .tabs button{white-space:nowrap}
-    .chips{flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px}
+    .chips{flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px;min-width:0}
     .pager{flex-wrap:wrap;gap:8px}
   }
 </style>
@@ -368,7 +373,7 @@
           <div class="chips" id="notifChips"></div>
           <button class="btn primary" style="flex-shrink:0" onclick="openTaskModal()"><svg class="ico" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>สร้างงานใหม่</button>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 330px;gap:18px;align-items:start">
+        <div class="notif-grid" style="display:grid;grid-template-columns:1fr 330px;gap:18px;align-items:start">
           <div class="card">
             <div class="card-head"><h3>งานที่ต้องดำเนินการ</h3></div>
             <div id="notifList" style="padding:2px 20px 8px"></div>
