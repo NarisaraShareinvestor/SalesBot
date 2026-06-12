@@ -225,6 +225,7 @@
       <a id="nav-dashboard" onclick="setView('dashboard')"><svg class="ico" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Dashboard</a>
       <a id="nav-chat" onclick="setView('chat')"><svg class="ico" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Chat</a>
       <a id="nav-data" onclick="setView('data')"><svg class="ico" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.7 4 3 9 3s9-1.3 9-3V5"/><path d="M3 12c0 1.7 4 3 9 3s9-1.3 9-3"/></svg>Data</a>
+      <a id="nav-radar" onclick="setView('radar')"><svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>เรดาร์โอกาสขาย</a>
       <a id="nav-notif" onclick="setView('notif')" style="justify-content:space-between"><span style="display:flex;align-items:center;gap:11px"><svg class="ico" viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>Notifications</span><span class="navcount" id="navNotifCount"></span></a>
       <a id="nav-admin" onclick="setView('admin')" style="display:none"><svg class="ico" viewBox="0 0 24 24"><path d="M12 2 4 6v6c0 5 3.5 8 8 10 4.5-2 8-5 8-10V6z"/><path d="M9 12l2 2 4-4"/></svg>Admin · ปัญหา</a>
     </nav>
@@ -357,6 +358,23 @@
         </div>
       </div>
 
+      <!-- RADAR -->
+      <div id="view-radar" style="display:none">
+        <div class="card">
+          <div class="card-head">
+            <div><h3>เรดาร์โอกาสขาย</h3><div class="sub">3 ช่องทางรายได้จากข้อมูลจริง — เรียงตาม "ควรลุยก่อน"</div></div>
+            <div id="radarSummary" style="font-size:12.5px;color:var(--muted)"></div>
+          </div>
+          <div class="tabs">
+            <button class="active" id="rtab-retain" onclick="setRadarTab('retain')">เสี่ยงหลุด</button>
+            <button id="rtab-winback" onclick="setRadarTab('winback')">ดึงกลับ</button>
+            <button id="rtab-upsell" onclick="setRadarTab('upsell')">อัปเซล</button>
+          </div>
+          <div style="padding:0 8px"><table id="radarTable"></table></div>
+          <div class="pager"><span id="radarInfo"></span></div>
+        </div>
+      </div>
+
       <!-- ADMIN (เฉพาะวิศวกร AI) -->
       <div id="view-admin" style="display:none">
         <!-- token gate -->
@@ -420,6 +438,22 @@
     </div></div>
   </div></div>
 
+  <!-- Draft outreach modal -->
+  <div class="modal" id="draftModal"><div class="box" style="width:560px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <h3 id="draftTitle" style="margin:0">ร่างข้อความ</h3>
+      <select id="draftChannel" onchange="regenDraft()" style="border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:13px;font-family:inherit">
+        <option value="email">อีเมล</option><option value="line">LINE</option>
+      </select>
+    </div>
+    <div id="draftBody" style="background:#f7f8fa;border:1px solid var(--line2);border-radius:10px;padding:16px;font-size:13.5px;line-height:1.7;white-space:pre-wrap;max-height:50vh;overflow-y:auto;min-height:120px"></div>
+    <div class="actions"><span style="font-size:11.5px;color:var(--faint)">AI ร่างให้ — ตรวจทานก่อนส่งทุกครั้ง</span><div class="right">
+      <button class="btn" onclick="regenDraft()">ร่างใหม่</button>
+      <button class="btn" id="copyBtn" onclick="copyDraft()">คัดลอก</button>
+      <button class="btn primary" onclick="document.getElementById('draftModal').classList.remove('open')">ปิด</button>
+    </div></div>
+  </div></div>
+
   <!-- Login modal -->
   <div class="modal" id="loginModal"><div class="box" style="width:420px">
     <div style="display:flex;align-items:center;gap:11px;margin-bottom:6px">
@@ -473,6 +507,11 @@
       <div class="fld"><label>SET ESG</label><select id="fx_set_esg"><option value="">-</option><option value="Yes">Yes</option><option value="No">No</option></select></div>
       <div class="fld"><label>AE (recommend)</label><input id="fx_ae_recommend" list="aeList" placeholder="..."></div>
       <div class="fld"><label>Product Pryce ESG</label><input id="fx_product_pryce_esg"></div>
+    </div>
+
+    <div id="trendSection" style="display:none">
+      <div class="section-t">แนวโน้มมูลค่าสัญญารายปี</div>
+      <div id="trendChart"></div>
     </div>
 
     <div id="memSection" style="display:none">
@@ -553,8 +592,9 @@ function logout(){ localStorage.removeItem("salesbot_me"); me=null; document.get
 const SUBS={dashboard:"ภาพรวมทีมและการมอบหมายงาน",chat:"สอบถามข้อมูลลูกค้า / สัญญา / Follow-up",
   data:"ข้อมูลลูกค้า / สัญญา / IR Contact",notif:"งานที่กำลังจะถึง / สัญญาใกล้หมดอายุ / Follow-up",
   admin:"รายงานปัญหา + ระบบปรับปรุงตัวเอง (เฉพาะวิศวกร AI)"};
-const TITLES={dashboard:"Dashboard",chat:"Chat",data:"Data",notif:"Notifications",admin:"Admin · ระบบปรับปรุงตัวเอง"};
-const VIEWS=["dashboard","chat","data","notif","admin"];
+const TITLES={dashboard:"Dashboard",chat:"Chat",data:"Data",notif:"Notifications",radar:"เรดาร์โอกาสขาย",admin:"Admin · ระบบปรับปรุงตัวเอง"};
+SUBS.radar="โอกาสรักษา / ดึงกลับ / อัปเซล — จากข้อมูลจริง";
+const VIEWS=["dashboard","chat","data","notif","radar","admin"];
 function setView(v){
   state.view=v;
   VIEWS.forEach(x=>{
@@ -566,6 +606,7 @@ function setView(v){
   if(v==="dashboard")loadDashboard();
   if(v==="data")reload();
   if(v==="notif")loadNotifPage();
+  if(v==="radar")loadRadar();
   if(v==="admin")openAdmin();
 }
 
@@ -924,6 +965,84 @@ async function saveTask(){
   else{const e=await r.json();alert("ผิดพลาด: "+(e.detail||r.status));}
 }
 
+/* ── เรดาร์โอกาสขาย ── */
+let radarTab="retain";
+function trendChip(t,pct){
+  if(t==="down")return `<span class="badge b-bad">▼ ${pct!=null?Math.abs(pct)+'%':'ลดลง'}</span>`;
+  if(t==="up")return `<span class="badge b-ok">▲ ${pct!=null?pct+'%':'โต'}</span>`;
+  if(t==="flat")return '<span class="badge b-mut">— คงที่</span>';
+  return '';
+}
+function riskChip(lvl,score){
+  const m={high:"b-bad",mid:"b-warn",low:"b-mut"},lab={high:"เสี่ยงสูง",mid:"เสี่ยงกลาง",low:"เสี่ยงต่ำ"};
+  return `<span class="badge ${m[lvl]}">${lab[lvl]} ${score}</span>`;
+}
+function setRadarTab(t){radarTab=t;
+  ["retain","winback","upsell"].forEach(x=>document.getElementById("rtab-"+x).classList.toggle("active",x===t));
+  loadRadar();
+}
+async function loadRadar(){
+  const q=meAE()?`?ae=${encodeURIComponent(meAE())}`:"";
+  const d=await (await fetch(`${API}/api/radar/${radarTab}${q}`)).json();
+  const t=document.getElementById("radarTable");
+  const items=d.items||[];
+  if(radarTab==="retain"){
+    t.innerHTML="<thead><tr><th>Account</th><th>Company</th><th>AE</th><th>หมดใน</th><th>ความเสี่ยง</th><th>แนวโน้ม</th><th class='num'>มูลค่า/ปี</th><th></th></tr></thead><tbody>"+
+      (items.length?items.map(c=>`<tr class="clickable" onclick="editCustomer('${c.account}')">
+        <td class="acct">${esc(c.account)}</td><td>${esc(c.company_name)||'-'}</td><td>${esc(c.ae_ir)||'—'}</td>
+        <td><span class="d-warn">${c.days_to_expiry} วัน</span></td>
+        <td>${riskChip(c.risk_level,c.risk_score)}${c.reasons&&c.reasons.length?`<div class="mut" style="font-size:11px;margin-top:3px">${esc(c.reasons.join(' · '))}</div>`:''}</td>
+        <td>${trendChip(c.trend,c.change_pct)}</td>
+        <td class="num">${fmtMoney(c.value)}</td>
+        <td onclick="event.stopPropagation()"><button class="lnk" onclick="openDraft('${c.account}','renew')">ร่างข้อความ</button></td></tr>`).join("")
+        :emptyRow(8))+"</tbody>";
+    document.getElementById("radarSummary").textContent=`${d.total} รายเสี่ยงหลุด`;
+  } else if(radarTab==="winback"){
+    t.innerHTML="<thead><tr><th>Account</th><th>Company</th><th>AE</th><th>สถานะ</th><th>แนวโน้มเดิม</th><th class='num'>มูลค่าเดิม/ปี</th><th></th></tr></thead><tbody>"+
+      (items.length?items.map(c=>`<tr class="clickable" onclick="editCustomer('${c.account}')">
+        <td class="acct">${esc(c.account)}</td><td>${esc(c.company_name)||'-'}</td><td>${esc(c.ae_ir)||'—'}</td>
+        <td>${statusBadge(c.lost_reason)}</td><td>${trendChip(c.trend,c.change_pct)}</td>
+        <td class="num">${fmtMoney(c.value)}</td>
+        <td onclick="event.stopPropagation()"><button class="lnk" onclick="openDraft('${c.account}','winback')">ร่างข้อความ</button></td></tr>`).join("")
+        :emptyRow(7))+"</tbody>";
+    document.getElementById("radarSummary").textContent=`${d.total} ราย · มูลค่าเดิมรวม ${fmtMoney(d.total_value)} บาท`;
+  } else {
+    t.innerHTML="<thead><tr><th>Account</th><th>Company</th><th>AE</th><th>เกรด</th><th>แนวโน้ม</th><th class='num'>มูลค่า/ปี</th><th></th></tr></thead><tbody>"+
+      (items.length?items.map(c=>`<tr class="clickable" onclick="editCustomer('${c.account}')">
+        <td class="acct">${esc(c.account)}</td><td>${esc(c.company_name)||'-'}</td><td>${esc(c.ae_ir)||'—'}</td>
+        <td>${c.grade?`<span class="badge b-mut">${esc(c.grade)}</span>`:'—'}</td><td>${trendChip(c.trend,c.change_pct)}</td>
+        <td class="num">${fmtMoney(c.value)}</td>
+        <td onclick="event.stopPropagation()"><button class="lnk" onclick="openDraft('${c.account}','upsell')">ร่างข้อความ</button></td></tr>`).join("")
+        :emptyRow(7))+"</tbody>";
+    document.getElementById("radarSummary").textContent=`${d.total} ราย IR ที่ยังไม่มี WD`;
+  }
+  document.getElementById("radarInfo").textContent=`แสดง ${items.length} จาก ${d.total} รายการ`;
+}
+function emptyRow(cols){return `<tr><td colspan="${cols}"><div class="empty">ไม่พบรายการ</div></td></tr>`;}
+
+/* ── ร่างข้อความ AI ── */
+const PURPOSE_LABEL={renew:"ชวนต่อสัญญา",winback:"ดึงกลับ",upsell:"เสนอ WD เพิ่ม"};
+async function openDraft(account,purpose){
+  const m=document.getElementById("draftModal");
+  document.getElementById("draftTitle").textContent=`ร่างข้อความ: ${account} (${PURPOSE_LABEL[purpose]||purpose})`;
+  const ch=document.getElementById("draftChannel").value||"email";
+  document.getElementById("draftBody").innerHTML='<div class="mut" style="padding:20px;text-align:center">AI กำลังร่าง…</div>';
+  m.classList.add("open");
+  m.dataset.account=account; m.dataset.purpose=purpose;
+  try{
+    const d=await (await fetch(`${API}/api/draft-outreach`,{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({account,purpose,channel:ch})})).json();
+    document.getElementById("draftBody").textContent=d.draft||"(ว่าง)";
+  }catch(e){document.getElementById("draftBody").textContent="ร่างไม่สำเร็จ ลองใหม่อีกครั้ง";}
+}
+function regenDraft(){const m=document.getElementById("draftModal");openDraft(m.dataset.account,m.dataset.purpose);}
+function copyDraft(){
+  const txt=document.getElementById("draftBody").textContent;
+  navigator.clipboard.writeText(txt).then(()=>{
+    const b=document.getElementById("copyBtn");const o=b.textContent;b.textContent="คัดลอกแล้ว ✓";setTimeout(()=>b.textContent=o,1800);
+  });
+}
+
 /* ── Admin · ระบบปรับปรุงตัวเอง ── */
 function adminTok(){return localStorage.getItem("salesbot_admin_token")||"";}
 function adminHeaders(){return {"Content-Type":"application/json","X-Admin-Token":adminTok()};}
@@ -1051,6 +1170,7 @@ function openModal(){state.editing=null;document.getElementById("modalTitle").te
   EXTRA_FIELDS.forEach(([,id])=>{const el=document.getElementById(id);if(el)el.value="";});
   if(meAE())document.getElementById("f_ae_ir").value=meAE();
   document.getElementById("f_account").disabled=false;
+  document.getElementById("trendSection").style.display="none";
   document.getElementById("memSection").style.display="none";
   document.getElementById("fuSection").style.display="none";
   document.getElementById("modal").classList.add("open");}
@@ -1067,11 +1187,29 @@ async function editCustomer(acct){
   const ex=c.extra||{};
   EXTRA_FIELDS.forEach(([key,id])=>{const el=document.getElementById(id);if(el)el.value=ex[key]??"";});
   document.getElementById("f_account").disabled=true;
+  renderTrend(c.value_trend);
   document.getElementById("memSection").style.display="block";
   document.getElementById("fuSection").style.display="block";
   loadMemories(acct);
   loadFollowups(acct);
   document.getElementById("modal").classList.add("open");
+}
+function renderTrend(vt){
+  const sec=document.getElementById("trendSection"),el=document.getElementById("trendChart");
+  if(!vt||!vt.series||vt.series.length<2){sec.style.display="none";return;}
+  sec.style.display="block";
+  const max=Math.max.apply(null,vt.series.map(p=>p.value))||1;
+  const col=vt.trend==="down"?"var(--bad)":(vt.trend==="up"?"var(--ok)":"var(--muted)");
+  const bars=vt.series.map(function(p){
+    const h=Math.max(6,Math.round(p.value/max*70));
+    return '<div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex:1">'
+      +'<div style="font-size:10px;color:var(--faint)">'+fmtMoney(p.value)+'</div>'
+      +'<div style="width:60%;height:'+h+'px;background:'+col+';border-radius:4px 4px 0 0;opacity:.85"></div>'
+      +'<div style="font-size:10.5px;color:var(--muted)">'+p.year+'</div></div>';
+  }).join("");
+  const lbl=vt.trend==="down"?`ลดลง ${Math.abs(vt.change_pct)}%`:(vt.trend==="up"?`เติบโต ${vt.change_pct}%`:"คงที่");
+  el.innerHTML='<div style="display:flex;align-items:flex-end;gap:6px;height:100px;padding:6px 0">'+bars+'</div>'
+    +'<div style="font-size:12px;color:'+col+';font-weight:600;margin-top:4px">'+lbl+' ('+vt.series[0].year+'→'+vt.series[vt.series.length-1].year+')</div>';
 }
 async function loadMemories(acct){
   const d=await (await fetch(`${API}/api/customers/${encodeURIComponent(acct)}/memories`)).json();

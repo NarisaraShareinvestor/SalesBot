@@ -107,4 +107,10 @@ def customer_full(c: Customer) -> Dict:
         "cc_emails": c.cc_emails,
         "extra": c.extra,
     })
+    # แนวโน้มมูลค่าสัญญารายปี (จาก extra) — import ในฟังก์ชันเลี่ยง circular import
+    try:
+        from radar import value_trend
+        d["value_trend"] = value_trend(c.extra)
+    except Exception:
+        pass
     return d

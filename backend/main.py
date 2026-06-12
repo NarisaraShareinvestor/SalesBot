@@ -26,6 +26,7 @@ from chat_tools import TOOLS, run_tool
 from database import Base, engine, get_db
 from memory_manager import CustomerMemoryManager, UserMemoryManager
 import improve
+import radar
 from models import Customer, FollowUp, ImprovementReport, IssueLog, LearnedGuidance, MemoryType
 from notifications import (get_ae_emails, has_user_smtp, notification_summary,
                            send_expiry_digest, set_ae_emails, set_user_smtp)
@@ -742,6 +743,73 @@ def briefing(db: Session = Depends(get_db), ae: Optional[str] = None, refresh: b
 
     _briefing_cache[key] = text
     return {"briefing": text, "cached": False}
+
+
+# ── Sales Opportunity Radar (เสี่ยงหลุด / ดึงกลับ / อัปเซล) ───────────────────
+@app.get("/api/radar/{tab}")
+def radar_tab(tab: str, db: Session = Depends(get_db), ae: Optional[str] = None):
+    if tab == "retain":
+        return radar.retain(db, ae=ae)
+    if tab == "winback":
+        return radar.winback(db, ae=ae)
+    if tab == "upsell":
+        return radar.upsell(db, ae=ae)
+    raise HTTPException(404, "unknown radar tab")
+
+
+class DraftIn(BaseModel):
+    account: str
+    purpose: str  # renew | winback | upsell
+    channel: Optional[str] = "email"  # email | line
+
+
+_PURPOSE_BRIEF = {
+    "renew": "สัญญากำลังจะหมดอายุ — ชวนต่อสัญญา เน้นคุณค่าที่ได้รับและความต่อเนื่อง",
+    "winback": "สัญญาหมด/ยกเลิกไปแล้ว — ชวนกลับมาใช้บริการอีกครั้ง อย่างสุภาพ ไม่กดดัน",
+    "upsell": "ลูกค้าใช้ IR อยู่แล้ว — เสนอเพิ่มบริการ WD (Webcast/Digital) ชี้ประโยชน์ที่จะได้เพิ่ม",
+}
+
+
+@app.post("/api/draft-outreach")
+def draft_outreach(body: DraftIn, db: Session = Depends(get_db)):
+    """ให้ AI ร่างข้อความติดต่อลูกค้า (อีเมล/LINE) ตามจุดประสงค์ — อิงข้อมูลจริง + ความจำทีม."""
+    c = db.get(Customer, body.account.strip().upper())
+    if not c:
+        raise HTTPException(404, "customer not found")
+    brief = _PURPOSE_BRIEF.get(body.purpose, _PURPOSE_BRIEF["renew"])
+    facts = CustomerMemoryManager.list_facts(db, c.account)
+    vt = radar.value_trend(c.extra)
+    ctx = {
+        "company": c.company_name_th or c.company_name_en,
+        "contact_email": c.contact_email,
+        "product": c.contract_type,
+        "expiry_date": c.expiry_date.strftime("%Y-%m-%d") if c.expiry_date else None,
+        "monthly_payment": c.monthly_payment,
+        "annual_value": c.latest_value,
+        "grade": c.grade,
+        "value_trend": vt.get("trend"),
+        "team_memory": facts,
+    }
+    channel = "อีเมล" if body.channel != "line" else "ข้อความ LINE (สั้น กระชับ)"
+    prompt = (
+        f"ร่าง{channel}ภาษาไทยถึงผู้ติดต่อ IR ของลูกค้า เพื่อ: {brief}\n\n"
+        f"ข้อมูลลูกค้า (ใช้ให้เป็นประโยชน์ ไม่ต้องใส่ครบทุกอย่าง):\n"
+        f"{json.dumps(ctx, ensure_ascii=False, default=str)}\n\n"
+        "ข้อกำหนด: สุภาพ มืออาชีพ เป็นกันเองแบบไทย, มีหัวข้อ (subject) ถ้าเป็นอีเมล, "
+        "เนื้อหากระชับ 1 ย่อหน้า-ครึ่ง, ลงท้ายแบบเปิดให้นัดคุยต่อ, ห้ามแต่งตัวเลข/ข้อมูลที่ไม่ได้ให้มา. "
+        "ถ้ามี team_memory ให้ใช้ปรับโทนให้ตรงสถานการณ์"
+    )
+    try:
+        client = _openai_client()
+        resp = client.chat.completions.create(
+            model=OPENAI_MODEL,
+            messages=[{"role": "system", "content": "คุณคือผู้ช่วยทีมขาย IR ที่ร่างข้อความได้เป็นธรรมชาติ"},
+                      {"role": "user", "content": prompt}],
+            temperature=0.6,
+        )
+        return {"draft": (resp.choices[0].message.content or "").strip(), "account": c.account}
+    except Exception as e:
+        raise HTTPException(502, f"ร่างข้อความไม่สำเร็จ: {e}")
 
 
 # ── Admin: ระบบรายงานปัญหา + self-improvement (เข้าถึงด้วย ADMIN_TOKEN เท่านั้น) ──
