@@ -16,7 +16,7 @@
   }
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:"Inter","Sarabun",-apple-system,"Segoe UI",sans-serif;background:var(--bg);color:var(--ink);
-    height:100vh;display:flex;overflow:hidden;font-size:14px;-webkit-font-smoothing:antialiased}
+    height:100vh;height:100dvh;display:flex;overflow:hidden;font-size:14px;-webkit-font-smoothing:antialiased}
   svg{display:block}
   .ico{width:19px;height:19px;stroke:currentColor;stroke-width:1.6;fill:none;stroke-linecap:round;stroke-linejoin:round}
   button{font-family:inherit}
@@ -249,7 +249,9 @@
     .nrow .ttl{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .nrow{gap:10px}
     .nrow .right{flex-direction:column;align-items:flex-end;gap:6px}
-    #view-chat .card{height:calc(100dvh - 140px)}
+    #view-chat{height:100%}
+    #view-chat .card{height:100%;margin:0}
+    .scroll{padding-bottom:8px}
     .card-head{flex-wrap:wrap;gap:8px}
     .fu-add{flex-wrap:wrap}
     .fu-add input[type=date]{flex:1 0 100%}
