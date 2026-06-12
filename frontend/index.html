@@ -975,7 +975,16 @@ function trendChip(t,pct){
 }
 function riskChip(lvl,score){
   const m={high:"b-bad",mid:"b-warn",low:"b-mut"},lab={high:"เสี่ยงสูง",mid:"เสี่ยงกลาง",low:"เสี่ยงต่ำ"};
-  return `<span class="badge ${m[lvl]}">${lab[lvl]} ${score}</span>`;
+  return '<span class="badge '+m[lvl]+'">'+lab[lvl]+' '+score+'</span>';
+}
+function riskReasons(reasons){
+  if(!reasons||!reasons.length) return '';
+  var grade=reasons.filter(function(r){return r.indexOf('เกรด')===0;});
+  var other=reasons.filter(function(r){return r.indexOf('เกรด')!==0;});
+  var html='';
+  if(other.length) html+='<div class="mut" style="font-size:11px;margin-top:3px">'+esc(other.join(' · '))+'</div>';
+  if(grade.length) html+='<div class="mut" style="font-size:11px;margin-top:2px">'+esc(grade.join(', '))+'</div>';
+  return html;
 }
 function setRadarTab(t){radarTab=t;
   ["retain","winback","upsell"].forEach(x=>document.getElementById("rtab-"+x).classList.toggle("active",x===t));
@@ -991,7 +1000,7 @@ async function loadRadar(){
       (items.length?items.map(c=>`<tr class="clickable" onclick="editCustomer('${c.account}')">
         <td class="acct">${esc(c.account)}</td><td>${esc(c.company_name)||'-'}</td><td>${esc(c.ae_ir)||'—'}</td>
         <td><span class="d-warn">${c.days_to_expiry} วัน</span></td>
-        <td>${riskChip(c.risk_level,c.risk_score)}${c.reasons&&c.reasons.length?(()=>{const g=c.reasons.filter(r=>r.startsWith('เกรด'));const o=c.reasons.filter(r=>!r.startsWith('เกรด'));return(o.length?`<div class="mut" style="font-size:11px;margin-top:3px">${esc(o.join(' · '))}</div>`:'')+( g.length?`<div class="mut" style="font-size:11px;margin-top:2px">${esc(g.join(' · '))}</div>`:'')})()):''}</td>
+        <td>${riskChip(c.risk_level,c.risk_score)}${riskReasons(c.reasons)}</td>
         <td>${trendChip(c.trend,c.change_pct)}</td>
         <td class="num">${fmtMoney(c.value)}</td>
         <td onclick="event.stopPropagation()"><button class="lnk" onclick="openDraft('${c.account}','renew')">ร่างข้อความ</button></td></tr>`).join("")
