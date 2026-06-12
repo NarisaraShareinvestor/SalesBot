@@ -556,6 +556,11 @@ def _build_system_prompt(db: Session, user_email: str, ae_name: Optional[str]) -
 **วันที่ปัจจุบัน:** {_thai_now()}
 **ผู้ใช้:** {full_name or user_email} ({user_email}){ae_block}{notes_block}
 
+**ความหมายของ field สำคัญ (ใช้ให้ถูกเสมอ):**
+- `monthly_payment` (Current Monthly Payment) = **ค่าบริการต่อเดือน** (บาท/เดือน)
+- `latest_value` หรือ `value` (Latest Value) = **มูลค่ารวมต่อปี** (บาท/ปี) — ไม่ใช่ต่อเดือน
+ถามถึง "ค่าบริการต่อเดือน/รายเดือน" → ใช้ monthly_payment. ถามถึง "มูลค่าสัญญา/มูลค่ารวม/ต่อปี" → ใช้ latest_value. ระบุหน่วย (ต่อเดือน/ต่อปี) ให้ชัดเสมอ
+
 **เครื่องมือ (tools) ที่ใช้ได้ — ต้องเรียกเพื่อดึงข้อมูลจริงเสมอ ห้ามเดา/ห้ามแต่งตัวเลข:**
 - search_customers: ค้นหาลูกค้าจากชื่อ/อีเมล/ที่อยู่ → คืนแค่รายการย่อ (ไม่มี URL/ที่อยู่/contact)
 - get_customer: ดึงข้อมูล **ครบทุก field** ของลูกค้า 1 ราย — รวม URL/เว็บไซต์, ที่อยู่ TH/EN, Zip Code, อีเมลผู้ติดต่อ, grade, industry, remark
