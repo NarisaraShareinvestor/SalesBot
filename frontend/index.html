@@ -991,7 +991,7 @@ async function loadRadar(){
       (items.length?items.map(c=>`<tr class="clickable" onclick="editCustomer('${c.account}')">
         <td class="acct">${esc(c.account)}</td><td>${esc(c.company_name)||'-'}</td><td>${esc(c.ae_ir)||'—'}</td>
         <td><span class="d-warn">${c.days_to_expiry} วัน</span></td>
-        <td>${riskChip(c.risk_level,c.risk_score)}${c.reasons&&c.reasons.length?`<div class="mut" style="font-size:11px;margin-top:3px">${esc(c.reasons.join(' · '))}</div>`:''}</td>
+        <td>${riskChip(c.risk_level,c.risk_score)}${c.reasons&&c.reasons.length?(()=>{const g=c.reasons.filter(r=>r.startsWith('เกรด'));const o=c.reasons.filter(r=>!r.startsWith('เกรด'));return(o.length?`<div class="mut" style="font-size:11px;margin-top:3px">${esc(o.join(' · '))}</div>`:'')+( g.length?`<div class="mut" style="font-size:11px;margin-top:2px">${esc(g.join(' · '))}</div>`:'')})()):''}</td>
         <td>${trendChip(c.trend,c.change_pct)}</td>
         <td class="num">${fmtMoney(c.value)}</td>
         <td onclick="event.stopPropagation()"><button class="lnk" onclick="openDraft('${c.account}','renew')">ร่างข้อความ</button></td></tr>`).join("")
