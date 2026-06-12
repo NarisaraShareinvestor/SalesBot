@@ -133,7 +133,13 @@ def _search_customers(db: Session, query: str) -> List[Dict]:
         Customer.address_en.ilike(like),
         Customer.zip_code.ilike(like),
     )).limit(25).all()
-    return [customer_summary(c) for c in rows]
+    out = [customer_summary(c) for c in rows]
+    # แนบความจำของทีม (ถ้ามี) เพื่อให้บอทดึงมาตอบได้แม้จะค้นเจอผ่าน search
+    for d in out:
+        facts = CustomerMemoryManager.list_facts(db, d["account"])
+        if facts:
+            d["team_memory"] = facts
+    return out
 
 
 def _get_customer(db: Session, account: str) -> Optional[Dict]:
