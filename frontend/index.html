@@ -657,11 +657,14 @@ async function loadBellPopup(){
   });
   const el=document.getElementById("bellPopupList");
   if(\!items.length){el.innerHTML='<div class="bp-empty">ไม่มีการแจ้งเตือน</div>';return;}
-  el.innerHTML=items.map(it=>`<div class="bp-it" onclick="${it.kind==='exp'?`editCustomer('${it.id||''}');closeBellPopup()`:`closeBellPopup();setView('notif')`}">
-    <span class="bp-dot ${it.dot}"></span>
-    <div class="bp-body"><div class="bp-title">${esc(it.title)}</div>
-      <div class="bp-sub">${esc(it.sub)}</div>
-      <div class="bp-when">${it.when}</div></div></div>`).join("");
+  el.innerHTML=items.map(function(it){
+    var onclick=it.kind==='exp'?"editCustomer('"+esc(it.account||'')+"');closeBellPopup()":"closeBellPopup();setView('notif')";
+    return '<div class="bp-it" onclick="'+onclick+'">'
+      +'<span class="bp-dot '+it.dot+'"></span>'
+      +'<div class="bp-body"><div class="bp-title">'+esc(it.title)+'</div>'
+      +'<div class="bp-sub">'+esc(it.sub)+'</div>'
+      +'<div class="bp-when">'+it.when+'</div></div></div>';
+  }).join("");
 }
 
 async function loadNotifBadge(){
