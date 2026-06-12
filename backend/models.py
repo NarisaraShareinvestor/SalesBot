@@ -69,6 +69,23 @@ class FollowUp(Base):
     created_at = Column(DateTime, default=func.now())
 
 
+class CustomerMemory(Base):
+    """ความจำเกี่ยวกับลูกค้า 1 ราย — ทีมเห็นร่วมกัน (institutional memory).
+
+    AI ดึงข้อเท็จจริงจากแชทมาบันทึกอัตโนมัติ (source='chat') หรือผู้ใช้เพิ่มเอง (source='manual').
+    รอบหน้าใครถามถึงลูกค้ารายนี้ บอทดึงความจำเหล่านี้มาเสริมได้ทันที.
+    """
+    __tablename__ = "customer_memory"
+
+    id = Column(Integer, primary_key=True, index=True)
+    account = Column(String(50), index=True, nullable=False)  # ลูกค้าที่ความจำนี้ผูกอยู่
+    fact = Column(Text, nullable=False)                       # ข้อเท็จจริง 1 ข้อ
+    source = Column(String(20), default="chat")               # chat | manual
+    created_by = Column(String(100), nullable=True)           # ใครเป็นคนบันทึก/คุย
+    created_at = Column(DateTime, default=func.now())
+    is_active = Column(Boolean, default=True)
+
+
 class MemoryType(str, enum.Enum):
     PROFILE = "profile"
     CHAT = "chat"

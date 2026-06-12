@@ -7,9 +7,10 @@
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from models import MemoryType, UserMemory
+from models import CustomerMemory, MemoryType, UserMemory
 
 CHAT_MAX_MESSAGES = 20
 
@@ -94,3 +95,53 @@ class UserMemoryManager:
     def get_notes(db: Session, user_email: str) -> List[Dict]:
         rec = UserMemoryManager.get_active_memory(db, user_email, MemoryType.CUSTOM)
         return rec.content.get("notes", []) if rec else []
+
+
+class CustomerMemoryManager:
+    """ความจำต่อลูกค้า (ทีมเห็นร่วมกัน) — แยกจาก UserMemory ที่เป็นความจำต่อ user."""
+
+    @staticmethod
+    def add(db: Session, account: str, fact: str, source: str = "chat",
+            created_by: str = None) -> CustomerMemory:
+        account = (account or "").strip().upper()
+        fact = (fact or "").strip()
+        # กันซ้ำ: ถ้ามีข้อเท็จจริงเดียวกัน (ไม่สนตัวพิมพ์) ที่ active อยู่แล้ว ไม่บันทึกซ้ำ
+        existing = db.query(CustomerMemory).filter(
+            CustomerMemory.account == account,
+            CustomerMemory.is_active == True,
+            func.lower(CustomerMemory.fact) == fact.lower(),
+        ).first()
+        if existing:
+            return existing
+        rec = CustomerMemory(account=account, fact=fact, source=source, created_by=created_by)
+        db.add(rec)
+        db.commit()
+        db.refresh(rec)
+        return rec
+
+    @staticmethod
+    def list(db: Session, account: str) -> List[CustomerMemory]:
+        account = (account or "").strip().upper()
+        return db.query(CustomerMemory).filter(
+            CustomerMemory.account == account,
+            CustomerMemory.is_active == True,
+        ).order_by(CustomerMemory.created_at.desc()).all()
+
+    @staticmethod
+    def list_facts(db: Session, account: str) -> List[str]:
+        return [m.fact for m in CustomerMemoryManager.list(db, account)]
+
+    @staticmethod
+    def delete(db: Session, mem_id: int) -> bool:
+        rec = db.get(CustomerMemory, mem_id)
+        if not rec:
+            return False
+        rec.is_active = False
+        db.commit()
+        return True
+
+    @staticmethod
+    def recent(db: Session, limit: int = 5) -> List[CustomerMemory]:
+        return db.query(CustomerMemory).filter(
+            CustomerMemory.is_active == True,
+        ).order_by(CustomerMemory.created_at.desc()).limit(limit).all()

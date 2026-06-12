@@ -9,6 +9,7 @@ from typing import Dict, List, Optional
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
+from memory_manager import CustomerMemoryManager
 from models import Customer, FollowUp
 from notifications import compute_notifications
 from services import customer_full, customer_summary
@@ -90,6 +91,24 @@ TOOLS = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "remember_about_customer",
+            "description": ("บันทึก **ข้อเท็จจริงสำคัญที่เพิ่งรู้เกี่ยวกับลูกค้า** ลงสมุดความจำของทีม (ทุกคนเห็นรอบหน้า). "
+                            "เรียกเองทันทีเมื่อผู้ใช้เล่าข้อมูลที่ควรจำข้ามครั้ง เช่น สถานะการต่อสัญญา ('ACE รอผ่านงบ Q3 ค่อยต่อ'), "
+                            "ความสนใจสินค้า ('สนใจ WD เพิ่ม'), ผู้มีอำนาจตัดสินใจ, เหตุผลที่ยกเลิก, นัดสำคัญ. "
+                            "**ห้าม**บันทึกข้อมูลที่อยู่ในฐานข้อมูลอยู่แล้ว (วันหมด/มูลค่า/ที่อยู่/อีเมล) — เก็บเฉพาะ insight ใหม่จากบทสนทนา"),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "account": {"type": "string", "description": "account code ของลูกค้า เช่น ACE"},
+                    "fact": {"type": "string", "description": "ข้อเท็จจริง 1 ข้อ กระชับ เป็นภาษาไทย เช่น 'รอผ่านงบ Q3 ค่อยตัดสินใจต่อสัญญา'"},
+                },
+                "required": ["account", "fact"],
+            },
+        },
+    },
 ]
 
 _GROUP_COL = {
@@ -119,7 +138,23 @@ def _search_customers(db: Session, query: str) -> List[Dict]:
 
 def _get_customer(db: Session, account: str) -> Optional[Dict]:
     c = db.get(Customer, account.strip().upper())
-    return customer_full(c) if c else None
+    if not c:
+        return None
+    d = customer_full(c)
+    facts = CustomerMemoryManager.list_facts(db, c.account)
+    if facts:
+        d["team_memory"] = facts  # ความจำที่ทีมเคยบันทึกไว้ — ใช้ตอบเสริมได้
+    return d
+
+
+def _remember_about_customer(db: Session, account: str, fact: str, created_by: Optional[str] = None) -> Dict:
+    acct = (account or "").strip().upper()
+    if not acct or not db.get(Customer, acct):
+        return {"error": f"ไม่พบลูกค้า {acct}"}
+    if not (fact or "").strip():
+        return {"error": "fact ว่าง"}
+    rec = CustomerMemoryManager.add(db, acct, fact, source="chat", created_by=created_by)
+    return {"ok": True, "account": acct, "fact": rec.fact}
 
 
 def _list_expiring(db: Session, within_days: int = 60, ae: Optional[str] = None) -> List[Dict]:
@@ -191,4 +226,7 @@ def run_tool(name: str, args: Dict, db: Session, ctx: Optional[Dict] = None):
     if name == "add_followup":
         return _add_followup(db, args.get("note", ""), args.get("account"), args.get("when"),
                              created_by=ctx.get("created_by"), creator_email=ctx.get("creator_email"))
+    if name == "remember_about_customer":
+        return _remember_about_customer(db, args.get("account", ""), args.get("fact", ""),
+                                        created_by=ctx.get("created_by"))
     return {"error": f"unknown tool: {name}"}
