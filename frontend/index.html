@@ -626,13 +626,13 @@ function daysFromToday(dateStr){ if(!dateStr)return null; return Math.round((sta
 let _bellOpen=false;
 function toggleBellPopup(e){
   e.stopPropagation();
-  _bellOpen=\!_bellOpen;
+  _bellOpen=!_bellOpen;
   document.getElementById("bellPopup").classList.toggle("open",_bellOpen);
   if(_bellOpen)loadBellPopup();
 }
 function closeBellPopup(){_bellOpen=false;document.getElementById("bellPopup").classList.remove("open");}
 document.addEventListener("click",function(e){
-  if(_bellOpen&&\!document.getElementById("bellPopup").contains(e.target)&&e.target.id\!=="bellBtn"){
+  if(_bellOpen&&!document.getElementById("bellPopup").contains(e.target)&&e.target.id!=="bellBtn"){
     closeBellPopup();
   }
 });
@@ -645,7 +645,7 @@ async function loadBellPopup(){
   // งานค้าง (ถึง/เลยกำหนด)
   tasks.filter(t=>{const d=daysFromToday(t.due_date);return d===null||d<=7;}).slice(0,8).forEach(t=>{
     const d=daysFromToday(t.due_date);
-    const dot=d\!==null&&d<0?'red':(d===0?'amber':'');
+    const dot=d!==null&&d<0?'red':(d===0?'amber':'');
     const when=t.due_date?(fmtDate(t.due_date)+(d<0?` · เลย ${-d} วัน`:(d===0?' · วันนี้':(d===1?' · พรุ่งนี้':` · อีก ${d} วัน`)))):'ไม่มีกำหนด';
     items.push({dot,title:t.note,sub:t.account||'งานทั่วไป',when,kind:'task',id:t.id});
   });
@@ -656,7 +656,7 @@ async function loadBellPopup(){
     items.push({dot,title:`สัญญาใกล้หมด: ${e.account}`,sub:e.company_name||'',when,kind:'exp'});
   });
   const el=document.getElementById("bellPopupList");
-  if(\!items.length){el.innerHTML='<div class="bp-empty">ไม่มีการแจ้งเตือน</div>';return;}
+  if(!items.length){el.innerHTML='<div class="bp-empty">ไม่มีการแจ้งเตือน</div>';return;}
   el.innerHTML=items.map(function(it){
     var onclick=it.kind==='exp'?"editCustomer('"+esc(it.account||'')+"');closeBellPopup()":"closeBellPopup();setView('notif')";
     return '<div class="bp-it" onclick="'+onclick+'">'
