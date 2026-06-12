@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from memory_manager import CustomerMemoryManager
 from models import Customer, FollowUp
-from notifications import compute_notifications
+from notifications import compute_notifications, get_ae_emails
 from services import customer_full, customer_summary
 
 # ── OpenAI tool schema ───────────────────────────────────────────────────────
@@ -94,6 +94,15 @@ TOOLS = [
     {
         "type": "function",
         "function": {
+            "name": "list_team",
+            "description": ("รายชื่อทีมขาย (AE-IR) ทั้งหมดในระบบ พร้อมอีเมลที่ตั้งไว้และจำนวนลูกค้าที่ดูแล. "
+                            "ใช้ตอบ 'คนในทีมมีใครบ้าง', 'ขออีเมลคนในทีม', 'AE แต่ละคนดูแลกี่ราย'"),
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "remember_about_customer",
             "description": ("บันทึก **ข้อเท็จจริงสำคัญที่เพิ่งรู้เกี่ยวกับลูกค้า** ลงสมุดความจำของทีม (ทุกคนเห็นรอบหน้า). "
                             "เรียกเองทันทีเมื่อผู้ใช้เล่าข้อมูลที่ควรจำข้ามครั้ง เช่น สถานะการต่อสัญญา ('ACE รอผ่านงบ Q3 ค่อยต่อ'), "
@@ -151,6 +160,20 @@ def _get_customer(db: Session, account: str) -> Optional[Dict]:
     if facts:
         d["team_memory"] = facts  # ความจำที่ทีมเคยบันทึกไว้ — ใช้ตอบเสริมได้
     return d
+
+
+def _list_team(db: Session) -> List[Dict]:
+    emails = get_ae_emails()
+    rows = (db.query(Customer.ae_ir, func.count())
+            .filter(Customer.ae_ir.isnot(None))
+            .group_by(Customer.ae_ir).all())
+    out = []
+    for ae, cnt in rows:
+        if not ae:
+            continue
+        out.append({"ae": ae, "email": emails.get(ae) or None, "customers": cnt})
+    out.sort(key=lambda x: x["customers"], reverse=True)
+    return out
 
 
 def _remember_about_customer(db: Session, account: str, fact: str, created_by: Optional[str] = None) -> Dict:
@@ -232,6 +255,8 @@ def run_tool(name: str, args: Dict, db: Session, ctx: Optional[Dict] = None):
     if name == "add_followup":
         return _add_followup(db, args.get("note", ""), args.get("account"), args.get("when"),
                              created_by=ctx.get("created_by"), creator_email=ctx.get("creator_email"))
+    if name == "list_team":
+        return _list_team(db)
     if name == "remember_about_customer":
         return _remember_about_customer(db, args.get("account", ""), args.get("fact", ""),
                                         created_by=ctx.get("created_by"))
