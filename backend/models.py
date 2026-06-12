@@ -86,6 +86,50 @@ class CustomerMemory(Base):
     is_active = Column(Boolean, default=True)
 
 
+class IssueLog(Base):
+    """บันทึกทุกบทสนทนา + auto-flag เคสที่บอทน่าจะตอบไม่ได้ — ใช้วิเคราะห์ปรับปรุงระบบ."""
+    __tablename__ = "issue_log"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_email = Column(String(255), index=True, nullable=True)
+    user_name = Column(String(120), nullable=True)
+    ae = Column(String(100), nullable=True)
+    question = Column(Text, nullable=False)
+    answer = Column(Text, nullable=True)
+    tools_used = Column(JSON, nullable=True)
+    flagged = Column(Boolean, default=False, index=True)   # น่าจะตอบไม่ได้/มีปัญหา
+    flag_reason = Column(String(200), nullable=True)
+    category = Column(String(120), nullable=True)          # เติมโดย nightly analysis
+    created_at = Column(DateTime, default=func.now(), index=True)
+
+
+class ImprovementReport(Base):
+    """รายงานสรุปปัญหา + ข้อเสนอปรับปรุง ที่ระบบสร้างทุกเที่ยงคืน."""
+    __tablename__ = "improvement_report"
+
+    id = Column(Integer, primary_key=True, index=True)
+    report_date = Column(String(10), index=True)   # YYYY-MM-DD (เวลาไทย)
+    total_chats = Column(Integer, default=0)
+    flagged_count = Column(Integer, default=0)
+    summary = Column(Text, nullable=True)          # สรุปภาพรวมภาษาไทย
+    categories = Column(JSON, nullable=True)        # [{category, count, examples}]
+    engineer_actions = Column(Text, nullable=True)  # สิ่งที่วิศวกรต้องแก้ (tool/data/prompt)
+    emailed = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=func.now())
+
+
+class LearnedGuidance(Base):
+    """คำแนะนำที่ระบบเรียนรู้เอง (routing hint) — เสนอตอนเที่ยงคืน แต่ inactive จนวิศวกรอนุมัติ."""
+    __tablename__ = "learned_guidance"
+
+    id = Column(Integer, primary_key=True, index=True)
+    text = Column(Text, nullable=False)
+    source = Column(String(20), default="nightly")  # nightly | manual
+    is_active = Column(Boolean, default=False, index=True)  # ต้องอนุมัติก่อนถึงจะ inject เข้า prompt
+    report_date = Column(String(10), nullable=True)
+    created_at = Column(DateTime, default=func.now())
+
+
 class MemoryType(str, enum.Enum):
     PROFILE = "profile"
     CHAT = "chat"
