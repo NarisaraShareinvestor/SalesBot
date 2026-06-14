@@ -604,7 +604,8 @@ def set_profile(body: ProfileIn, db: Session = Depends(get_db)):
 @app.get("/auth/microsoft/login")
 def microsoft_login():
     """Redirect to Azure AD login."""
-    return {"login_url": get_oauth_url()}
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url=get_oauth_url())
 
 
 @app.get("/auth/microsoft/callback")
