@@ -14,7 +14,7 @@ GRAPH_API_BASE = "https://graph.microsoft.com/v1.0"
 # Azure AD config
 AZURE_CLIENT_ID = os.getenv("AZURE_CLIENT_ID", "")
 AZURE_CLIENT_SECRET = os.getenv("AZURE_CLIENT_SECRET", "")
-AZURE_TENANT_ID = os.getenv("AZURE_TENANT_ID", "")
+AZURE_TENANT_ID = os.getenv("AZURE_TENANT_ID", "common")
 REDIRECT_URI = os.getenv("REDIRECT_URI", "https://salesbot.ohmai.me/auth/microsoft/callback")
 
 
