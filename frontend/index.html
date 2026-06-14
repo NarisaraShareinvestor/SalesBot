@@ -604,19 +604,31 @@
   </div></div>
 
   <!-- Login modal -->
-  <div class="modal" id="loginModal"><div class="box" style="width:420px">
+  <div class="modal" id="loginModal"><div class="box" style="width:480px">
     <div style="display:flex;align-items:center;gap:11px;margin-bottom:6px">
       <div class="mark" style="width:34px;height:34px;border-radius:9px;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700">S</div>
       <div><h3 style="margin:0">เข้าสู่ระบบ SalesBot</h3><div style="font-size:12px;color:var(--muted)">IR Sales Intelligence</div></div>
     </div>
-    <p style="font-size:12.5px;color:var(--muted);margin:8px 0 16px">กรอกข้อมูลเพื่อให้ระบบจดจำคุณและงานของคุณได้</p>
-    <div class="fld" style="margin-bottom:13px"><label>อีเมล *</label><input id="lg_email" placeholder="name@shareinvestor.com"></div>
-    <div class="fld" style="margin-bottom:13px"><label>ชื่อ-สกุล *</label><input id="lg_name" placeholder="เช่น Narisara P."></div>
-    <div class="grid2">
-      <div class="fld"><label>ชื่อเล่น / AE</label><input id="lg_ae" list="aeList" placeholder="เช่น Maprang"></div>
-      <div class="fld"><label>บทบาท</label><select id="lg_role"><option value="ae">AE (ดูแลลูกค้า)</option><option value="lead">Lead (หัวหน้าทีม)</option></select></div>
+
+    <div id="loginMicrosoft" style="display:block">
+      <p style="font-size:12.5px;color:var(--muted);margin:8px 0 16px">ลงชื่อเข้าด้วย Microsoft Teams เพื่อแจ้งเตือนอัตโนมัติ</p>
+      <button class="btn primary" style="width:100%;justify-content:center;margin-bottom:14px;background:#0078d4;border-color:#0078d4" onclick="loginWithMicrosoftTeams()">
+        <svg class="ico" style="width:18px;height:18px" viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" fill="currentColor"/><rect x="13" y="3" width="8" height="8" fill="currentColor"/><rect x="3" y="13" width="8" height="8" fill="currentColor"/><rect x="13" y="13" width="8" height="8" fill="currentColor"/></svg>
+        ลงชื่อเข้าด้วย Microsoft Teams
+      </button>
+      <div style="text-align:center;margin:14px 0;color:var(--muted);font-size:12px">หรือ</div>
     </div>
-    <button class="btn primary" style="width:100%;justify-content:center;margin-top:18px" onclick="doLogin()">เข้าสู่ระบบ</button>
+
+    <div id="loginManual" style="display:block">
+      <p style="font-size:12.5px;color:var(--muted);margin:8px 0 14px">กรอกข้อมูลเพื่อให้ระบบจดจำคุณและงานของคุณได้</p>
+      <div class="fld" style="margin-bottom:13px"><label>อีเมล *</label><input id="lg_email" placeholder="name@shareinvestor.com"></div>
+      <div class="fld" style="margin-bottom:13px"><label>ชื่อ-สกุล *</label><input id="lg_name" placeholder="เช่น Narisara P."></div>
+      <div class="grid2">
+        <div class="fld"><label>ชื่อเล่น / AE</label><input id="lg_ae" list="aeList" placeholder="เช่น Maprang"></div>
+        <div class="fld"><label>บทบาท</label><select id="lg_role"><option value="ae">AE (ดูแลลูกค้า)</option><option value="lead">Lead (หัวหน้าทีม)</option></select></div>
+      </div>
+      <button class="btn primary" style="width:100%;justify-content:center;margin-top:18px" onclick="doLogin()">เข้าสู่ระบบ</button>
+    </div>
   </div></div>
 
   <!-- Add/Edit modal -->
@@ -736,6 +748,11 @@ async function doLogin(){
   renderWho(); boot();
 }
 function logout(){ localStorage.removeItem("salesbot_me"); me=null; document.getElementById("loginModal").classList.add("open"); }
+
+function loginWithMicrosoftTeams(){
+  // Redirect to backend OAuth endpoint which will redirect to Azure AD
+  window.location.href=`${API}/auth/microsoft/login`;
+}
 
 /* ── view switching ── */
 const SUBS={dashboard:"ภาพรวมทีมและการมอบหมายงาน",chat:"สอบถามข้อมูลลูกค้า / สัญญา / Follow-up",
@@ -994,8 +1011,8 @@ function passFilter(it,f){
   if(f==="today")return it.days===0;
   if(f==="week")return it.days!==null&&it.days>=0&&it.days<=7;
   if(f==="expiring")return it.kind==="expiring";
-  if(f==="followup")return it.kind==="task"||it.kind==="chat";
-  if(f==="chat")return it.kind==="chat";
+  if(f==="shared")return it.kind!=="expiring"&&it.is_shared;
+  if(f==="private")return it.kind!=="expiring"&&!it.is_shared;
   return true;
 }
 function renderNotifChips(){
@@ -1003,13 +1020,20 @@ function renderNotifChips(){
   const active=items.filter(it=>!it.done);
   const defs=[
     ["all","ทั้งหมด"],["today","วันนี้"],["week","7 วันข้างหน้า"],
-    ["expiring","สัญญาใกล้หมดอายุ"],["followup","Follow-up"],["chat","จาก Chat"],
+    ["expiring","สัญญาใกล้หมดอายุ"],["shared","แชร์ทีม"],["private","ส่วนตัว"],
     ["done","เสร็จแล้ว"],
   ];
   document.getElementById("notifChips").innerHTML=defs.map(([k,label])=>{
-    const n=k==="done"
-      ? items.filter(it=>it.kind!=="expiring"&&it.done).length
-      : active.filter(it=>passFilter(it,k)).length;
+    let n=0;
+    if(k==="done"){
+      n=items.filter(it=>it.kind!=="expiring"&&it.done).length;
+    } else if(k==="shared"){
+      n=active.filter(it=>it.kind!=="expiring"&&it.is_shared).length;
+    } else if(k==="private"){
+      n=active.filter(it=>it.kind!=="expiring"&&!it.is_shared).length;
+    } else {
+      n=active.filter(it=>passFilter(it,k)).length;
+    }
     return `<button class="chip-f ${k===notifFilter?'active':''}" onclick="setNotifFilter('${k}')">${label}<span class="n">${n}</span></button>`;
   }).join("");
 }
@@ -1562,6 +1586,19 @@ function boot(){
   loadNotifBadge();
 }
 (async function(){
+  // Check for OAuth callback from Microsoft Teams
+  const params = new URLSearchParams(window.location.search);
+  if(params.has("login") && params.get("login")==="success"){
+    const email = params.get("email");
+    const name = params.get("name");
+    if(email && name){
+      me = {email, name, ae: name.split(" ")[0], role: "ae"};
+      localStorage.setItem("salesbot_me", JSON.stringify(me));
+      // Remove query params from URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }
+
   AES = await (await fetch(`${API}/api/aes`)).json();
   document.getElementById("aeList").innerHTML = AES.map(a=>`<option value="${a}">`).join("");
   if(me){ renderWho(); boot(); }

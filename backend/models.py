@@ -149,3 +149,18 @@ class UserMemory(Base):
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
     is_active = Column(Boolean, default=True)
+
+
+class UserCredential(Base):
+    """Microsoft Teams OAuth credentials per user."""
+    __tablename__ = "user_credentials"
+
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String(255), unique=True, index=True, nullable=False)
+    name = Column(String(255), nullable=True)
+    teams_user_id = Column(String(255), nullable=True)  # Microsoft Teams/Azure AD ID
+    access_token = Column(Text, nullable=False)
+    refresh_token = Column(Text, nullable=True)
+    token_expires_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())

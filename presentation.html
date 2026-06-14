@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SalesBot — IR Sales Intelligence Assistant · สไลด์นำเสนอ</title>
+<style>
+  :root{
+    --bg:#f4f5f7; --ink:#1f2328; --muted:#6b7280; --line:#d7dbe0;
+    --card:#ffffff; --accent:#374151; --accent2:#111827;
+    --ok:#3f7a52; --warn:#9a6a26; --bad:#9b3d3d; --chip:#eef0f3;
+    --blue:#3a5a8c;
+    --shadow:0 1px 2px rgba(16,24,40,.06),0 8px 24px rgba(16,24,40,.06);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Helvetica Neue",
+      "Noto Sans Thai","Sukhumvit Set",Tahoma,Arial,sans-serif;
+    color:var(--ink); background:#0e1116;
+    -webkit-font-smoothing:antialiased;
+  }
+  /* ---- deck ---- */
+  .deck{position:relative;height:100vh;width:100vw;overflow:hidden}
+  .slide{
+    position:absolute;inset:0;display:none;
+    padding:5.5vh 7vw 8vh; background:var(--bg);
+    flex-direction:column;overflow:auto;
+    animation:fade .45s ease both;
+  }
+  .slide.active{display:flex}
+  @keyframes fade{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+
+  .kicker{font-size:13px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);font-weight:600}
+  h1{font-size:clamp(34px,5vw,64px);line-height:1.05;margin:.25em 0 .15em;letter-spacing:-.02em}
+  h2{font-size:clamp(26px,3.4vw,40px);margin:.1em 0 .55em;letter-spacing:-.01em}
+  h3{font-size:18px;margin:0 0 .3em}
+  p{line-height:1.6;color:#374151}
+  .lead{font-size:clamp(16px,1.7vw,21px);color:#4b5563;max-width:60ch}
+  .sub{color:var(--muted);font-size:15px}
+  .mono{font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace}
+
+  /* ---- layout helpers ---- */
+  .grid{display:grid;gap:18px}
+  .g2{grid-template-columns:1fr 1fr}
+  .g3{grid-template-columns:repeat(3,1fr)}
+  .g4{grid-template-columns:repeat(4,1fr)}
+  .g6{grid-template-columns:repeat(3,1fr)}
+  @media(max-width:900px){.g2,.g3,.g4,.g6{grid-template-columns:1fr}}
+  .fill{flex:1;display:flex;flex-direction:column;justify-content:center}
+
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px 22px;box-shadow:var(--shadow)}
+  .card .ic{width:26px;height:26px;color:var(--accent);margin-bottom:10px}
+  .card h3{font-size:17px}
+  .card p{font-size:14.5px;margin:.25em 0 0;color:#4b5563}
+  .num{font-size:13px;font-weight:700;color:#9aa1ab}
+
+  .chip{display:inline-flex;align-items:center;gap:7px;background:var(--chip);border:1px solid var(--line);
+    color:#374151;border-radius:999px;padding:7px 13px;font-size:13.5px;font-weight:600;margin:4px 6px 4px 0}
+  .chip svg{width:15px;height:15px}
+  .dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+
+  table{width:100%;border-collapse:collapse;font-size:14px;background:#fff;border-radius:12px;overflow:hidden;border:1px solid var(--line)}
+  th,td{text-align:left;padding:10px 14px;border-bottom:1px solid #eceef1}
+  th{background:#f8f9fb;color:#525a64;font-weight:600;font-size:12.5px;letter-spacing:.03em;text-transform:uppercase}
+  tr:last-child td{border-bottom:none}
+  td .mono{font-size:12.5px;color:#3a4250}
+  .meth{font-weight:700;font-size:11px;color:#fff;padding:2px 7px;border-radius:5px}
+  .GET{background:#3a5a8c}.POST{background:#3f7a52}.PUT{background:#9a6a26}.DEL{background:#9b3d3d}
+
+  /* ---- progress / nav ---- */
+  .bar{position:fixed;top:0;left:0;height:3px;background:linear-gradient(90deg,#374151,#6b7280);z-index:50;transition:width .3s}
+  .nav{position:fixed;bottom:18px;right:24px;display:flex;gap:8px;align-items:center;z-index:50}
+  .nav button{width:38px;height:38px;border-radius:10px;border:1px solid var(--line);background:#fff;color:#374151;
+    font-size:17px;cursor:pointer;box-shadow:var(--shadow)}
+  .nav button:hover{background:#f0f2f5}
+  .pageno{position:fixed;bottom:22px;left:24px;color:#9aa1ab;font-size:13px;z-index:50;font-weight:600}
+  .footbrand{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);color:#aeb4bd;font-size:12px;z-index:40;letter-spacing:.08em}
+
+  /* ---- diagram boxes ---- */
+  .box{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 16px;text-align:center;box-shadow:var(--shadow);font-weight:600;font-size:14px}
+  .box small{display:block;font-weight:500;color:var(--muted);font-size:12px;margin-top:3px}
+  .box.k{background:#111827;color:#fff;border-color:#111827}
+  .box.k small{color:#aeb4bd}
+  .box.a{border-color:#9aa9c4;background:#f3f6fb}
+  .arrow{display:flex;align-items:center;justify-content:center;color:#9aa1ab;font-size:22px;font-weight:700}
+  .flowrow{display:grid;grid-template-columns:1fr auto 1fr auto 1fr;gap:8px;align-items:center}
+  @media(max-width:900px){.flowrow{grid-template-columns:1fr}.flowrow .arrow{transform:rotate(90deg)}}
+
+  .stat{font-size:clamp(30px,4vw,52px);font-weight:800;letter-spacing:-.02em;color:var(--accent2)}
+  .stat small{display:block;font-size:13px;font-weight:600;color:var(--muted);letter-spacing:.04em;text-transform:uppercase;margin-top:4px}
+
+  ul.clean{list-style:none;padding:0;margin:0}
+  ul.clean li{padding:8px 0 8px 26px;position:relative;line-height:1.5;border-bottom:1px solid #eceef1;color:#3b424b}
+  ul.clean li:last-child{border-bottom:none}
+  ul.clean li:before{content:"";position:absolute;left:4px;top:15px;width:7px;height:7px;border-radius:2px;background:var(--accent)}
+
+  .tag{font-size:12px;font-weight:700;padding:3px 9px;border-radius:6px;background:var(--chip);color:#475569;border:1px solid var(--line)}
+
+  .hint{position:fixed;bottom:60px;right:24px;color:#aeb4bd;font-size:12px;z-index:40}
+  .title-wrap{display:flex;flex-direction:column;justify-content:center;height:100%}
+  .badge-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:22px}
+  .url{font-family:"SF Mono",ui-monospace,Menlo,monospace;background:#111827;color:#e5e7eb;padding:6px 12px;border-radius:8px;font-size:14px;display:inline-block;margin-top:6px}
+
+  /* bar chart */
+  .barchart{display:flex;align-items:flex-end;gap:18px;height:230px;padding:12px 8px;border-bottom:2px solid var(--line)}
+  .barchart .col{flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;height:100%;justify-content:flex-end}
+  .barchart .b{width:64%;border-radius:8px 8px 0 0;background:linear-gradient(180deg,#4b5563,#111827);position:relative}
+  .barchart .b span{position:absolute;top:-22px;left:50%;transform:translateX(-50%);font-weight:700;font-size:13px;color:#374151}
+  .barchart .lbl{font-size:12.5px;color:#525a64;text-align:center;font-weight:600}
+</style>
+</head>
+<body>
+<div class="bar" id="bar"></div>
+<div class="deck" id="deck">
+
+<!-- 1 — TITLE -->
+<section class="slide active">
+  <div class="title-wrap">
+    <div class="kicker">ShareInvestor · IR Sales · Internal Tool</div>
+    <h1>SalesBot</h1>
+    <p class="lead">ผู้ช่วย AI สำหรับทีม IR Sales — แชทถามข้อมูลลูกค้า/สัญญาด้วยภาษาธรรมชาติ,
+    ดู/เพิ่ม/แก้ข้อมูลจริง, และแจ้งเตือนสัญญาใกล้หมดอายุ ด้วย <b>function-calling</b> บนฐานข้อมูลจริง</p>
+    <div class="badge-row">
+      <span class="chip"><span class="dot" style="background:var(--blue)"></span>FastAPI + Python</span>
+      <span class="chip"><span class="dot" style="background:var(--ok)"></span>OpenAI gpt-4o tool-calling</span>
+      <span class="chip"><span class="dot" style="background:var(--warn)"></span>SQLite / SQLAlchemy</span>
+      <span class="chip"><span class="dot" style="background:#111827"></span>Docker · Hostinger VPS · nginx</span>
+    </div>
+    <div style="margin-top:18px"><span class="url">https://salesbot.ohmai.me</span></div>
+  </div>
+</section>
+
+<!-- 2 — ปัญหา & ทำไม -->
+<section class="slide">
+  <div class="kicker">ภาพรวม</div>
+  <h2>ปัญหาที่แก้ — และวิธีคิด</h2>
+  <div class="grid g2 fill">
+    <div class="card">
+      <h3>ก่อนมี SalesBot</h3>
+      <ul class="clean">
+        <li>ข้อมูลลูกค้า/สัญญากระจายใน Excel หลายไฟล์</li>
+        <li>ต้องเปิดไฟล์ + กรองเอง กว่าจะรู้ว่าใครใกล้หมดอายุ</li>
+        <li>ไม่รู้ว่า "ลูกค้าที่ฉันดูแล" มีใครบ้าง สถานะอะไร</li>
+        <li>ลืมตามงาน — ไม่มีที่รวมงานติดตาม</li>
+      </ul>
+    </div>
+    <div class="card" style="border-color:#9aa9c4;background:#f6f8fc">
+      <h3>แนวคิด SalesBot</h3>
+      <ul class="clean">
+        <li><b>ถามเป็นภาษาคน</b> — บอท query ฐานข้อมูลจริงให้ (ไม่เดา ไม่นับเอง)</li>
+        <li><b>DB เป็น source of truth</b> — เพิ่ม/แก้ผ่านแอป ไม่กลับไปแก้ Excel</li>
+        <li><b>มีความจำ</b> — รู้ว่าใครคือใคร, AE ไหน, เคยคุยอะไร</li>
+        <li><b>รวมงานไว้ในเว็บ</b> — แจ้งเตือน + งานติดตาม ครบจบในที่เดียว</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- 3 — FEATURES -->
+<section class="slide">
+  <div class="kicker">ความสามารถหลัก</div>
+  <h2>5 ส่วนหลักของระบบ</h2>
+  <div class="grid g3 fill">
+    <div class="card"><div class="num">01</div><h3>Dashboard / มุมมองทีม</h3><p>การ์ดสรุป (จำนวนลูกค้า, มูลค่ารวม, Active, ใกล้หมด, หมดอายุ, ยังไม่มอบหมาย) + ตารางภาพรวมตาม AE คลิกชื่อ → กรองลูกค้าของคนนั้น</p></div>
+    <div class="card"><div class="num">02</div><h3>Chat อัจฉริยะ</h3><p>gpt-4o + tool-calling เรียก query จริงบน DB — อ่าน, <b>เขียน</b> (ลงงานติดตามจากแชท), และ <b>จำ</b> ผู้ใช้/ประวัติ/โน้ต</p></div>
+    <div class="card"><div class="num">03</div><h3>Data</h3><p>ตารางลูกค้า (ค้นหา/กรอง/แบ่งหน้า), แท็บใกล้หมดอายุ / IR Contact, ฟอร์มเพิ่ม-แก้ + มอบหมาย AE, Export CSV, งานติดตามต่อลูกค้า</p></div>
+    <div class="card"><div class="num">04</div><h3>Notifications</h3><p>รวมงานทั้งหมดในเว็บ: งานติดตาม + สัญญาใกล้หมด/หมดอายุ (คำนวณจากวันหมดอายุเทียบวันนี้), filter, ปฏิทินงาน, สรุปงานของคุณ</p></div>
+    <div class="card"><div class="num">05</div><h3>User Switcher</h3><p>เลือกตัวตน (AE แต่ละคน หรือ "ทีม/Lead") มุมซ้ายล่าง — มีผลต่อ default ของแจ้งเตือน/แชท แต่ทุกคนยังดู-แก้ได้ทั้งหมด</p></div>
+    <div class="card" style="border-color:#9aa9c4;background:#f6f8fc"><div class="num">+</div><h3>Sales Radar & Self-Improve</h3><p>คำนวณโอกาสขาย (retain / winback / upsell) จากข้อมูลที่มี + ระบบวิเคราะห์ปัญหาตัวเองทุกคืน (รออนุมัติก่อนใช้)</p></div>
+  </div>
+</section>
+
+<!-- 4 — ARCHITECTURE -->
+<section class="slide">
+  <div class="kicker">สถาปัตยกรรม · อะไรเชื่อมอะไร</div>
+  <h2>ภาพรวมการทำงาน end-to-end</h2>
+  <div class="fill">
+    <div class="flowrow" style="margin-bottom:22px">
+      <div class="box">ผู้ใช้ (ทีม IR Sales)<small>เบราว์เซอร์</small></div>
+      <div class="arrow">→</div>
+      <div class="box a">Frontend SPA<small>frontend/index.html · vanilla JS</small></div>
+      <div class="arrow">→</div>
+      <div class="box k">FastAPI Backend<small>main.py · Uvicorn :8000</small></div>
+    </div>
+
+    <div style="text-align:center;color:#9aa1ab;font-size:22px;margin:-6px 0 12px">↓ แตกออกเป็น</div>
+
+    <div class="grid g4">
+      <div class="box">SQLite DB<small>SQLAlchemy ORM<br>salesbot.db</small></div>
+      <div class="box a">OpenAI API<small>gpt-4o<br>function-calling</small></div>
+      <div class="box">SMTP (M365)<small>อีเมลสรุป<br>ออปชัน</small></div>
+      <div class="box">Excel Import<small>openpyxl<br>seed ครั้งเดียว</small></div>
+    </div>
+
+    <p class="sub" style="margin-top:18px;text-align:center">
+      เบราว์เซอร์คุยกับ FastAPI ผ่าน REST/JSON → backend เป็นตัวกลางคุยกับ DB, OpenAI, อีเมล
+      &nbsp;·&nbsp; ทุกข้อมูลตัวเลขมาจาก DB จริงเสมอ (บอทไม่เดา)
+    </p>
+  </div>
+</section>
+
+<!-- 5 — TECH STACK -->
+<section class="slide">
+  <div class="kicker">เทคโนโลยีที่ใช้ · ใช้อะไรเชื่อมอะไร</div>
+  <h2>Tech Stack</h2>
+  <div class="grid g3 fill">
+    <div class="card"><h3>Frontend</h3>
+      <p><b>Single-Page App</b> ไฟล์ <span class="mono">index.html</span> เดียว — vanilla HTML/CSS/JS ไม่มี framework</p>
+      <p>โทนเทา-ขาว เรียบหรู ไม่มี emoji ใช้ไอคอนเส้น SVG · localStorage เก็บโปรไฟล์ผู้ใช้</p>
+    </div>
+    <div class="card"><h3>Backend</h3>
+      <p><b>FastAPI 0.104</b> (Python 3.11) รันบน <b>Uvicorn</b> ที่พอร์ต 8000</p>
+      <p>เสิร์ฟทั้ง REST API และไฟล์ frontend จาก process เดียว</p>
+    </div>
+    <div class="card"><h3>ฐานข้อมูล</h3>
+      <p><b>SQLite</b> (ไฟล์ <span class="mono">salesbot.db</span>) เป็น default — เบา ไม่ต้องตั้ง server</p>
+      <p>ผ่าน <b>SQLAlchemy 2.0</b> ORM → สลับเป็น <b>PostgreSQL</b> ได้ทันทีด้วย <span class="mono">DATABASE_URL</span></p>
+    </div>
+    <div class="card"><h3>AI / LLM</h3>
+      <p><b>OpenAI gpt-4o</b> (SDK 2.41) ผ่าน <b>function / tool-calling</b></p>
+      <p>โมเดลเลือกเรียก "เครื่องมือ" → backend ไป query DB จริง → ตอบจากข้อมูลจริง</p>
+    </div>
+    <div class="card"><h3>Data Import</h3>
+      <p><b>openpyxl</b> อ่าน Excel 2 ไฟล์ (สัญญา + ผู้ติดต่อ IR) → seed ลง DB</p>
+      <p>idempotent (upsert) — รันซ้ำได้เมื่ออัปเดตไฟล์ต้นทาง</p>
+    </div>
+    <div class="card"><h3>Notifications</h3>
+      <p><b>SMTP — Microsoft 365 / Outlook</b> สำหรับส่งสรุปทางอีเมล (ออปชัน)</p>
+      <p>ถ้าไม่ตั้งค่า → คืนพรีวิวจำนวนรายการแทน ไม่ error</p>
+    </div>
+  </div>
+</section>
+
+<!-- 6 — HOSTING / DEPLOY -->
+<section class="slide">
+  <div class="kicker">Hosting & Deployment · โฮสต์ที่ไหน เชื่อมยังไง</div>
+  <h2>โครงสร้างการ deploy บน VPS</h2>
+  <div class="fill">
+    <div class="flowrow" style="margin-bottom:20px">
+      <div class="box">Internet<small>ผู้ใช้</small></div>
+      <div class="arrow">→</div>
+      <div class="box a">Cloudflare DNS<small>salesbot.ohmai.me</small></div>
+      <div class="arrow">→</div>
+      <div class="box k">hermes_nginx<small>front door · 80/443 · TLS</small></div>
+    </div>
+    <div style="text-align:center;color:#9aa1ab;font-size:22px;margin:2px 0 14px">↓ reverse-proxy ผ่าน docker network "hermes" (by name)</div>
+    <div class="grid g3">
+      <div class="box">salesbot container<small>Docker · FastAPI :8000<br>bind 127.0.0.1:8001 (health)</small></div>
+      <div class="box a">Volumes (persist)<small>/data/salesbot.db<br>ae_emails · user_smtp · Data/</small></div>
+      <div class="box">Let's Encrypt<small>certbot · auto-TLS</small></div>
+    </div>
+    <div class="grid g4" style="margin-top:20px">
+      <span class="chip">Host: <b>&nbsp;Hostinger VPS</b></span>
+      <span class="chip">Container: <b>&nbsp;Docker Compose</b></span>
+      <span class="chip">อยู่ร่วม stack: <b>&nbsp;hermes</b></span>
+      <span class="chip">Deploy: <b>&nbsp;./deploy/deploy.sh</b> (idempotent)</span>
+    </div>
+  </div>
+</section>
+
+<!-- 7 — AI FLOW -->
+<section class="slide">
+  <div class="kicker">หัวใจของระบบ · OpenAI Function-Calling</div>
+  <h2>แชท 1 คำถามทำงานยังไง</h2>
+  <div class="grid g2 fill">
+    <div>
+      <ul class="clean" style="font-size:15px">
+        <li><b>1.</b> ผู้ใช้พิมพ์ → frontend ส่ง <span class="mono">POST /api/chat</span> พร้อม memory ของผู้ใช้</li>
+        <li><b>2.</b> backend แนบ <b>นิยาม tools</b> + ประวัติ ส่งให้ <b>gpt-4o</b></li>
+        <li><b>3.</b> โมเดลตัดสินใจเรียก tool (เช่น <span class="mono">search_customers</span>)</li>
+        <li><b>4.</b> backend รัน query จริงบน <b>DB</b> → คืนผลให้โมเดล</li>
+        <li><b>5.</b> โมเดลสรุปเป็นคำตอบภาษาคน (วน loop ได้หลาย tool)</li>
+        <li><b>6.</b> เก็บความจำ (chat history, โน้ต, ข้อเท็จจริงลูกค้า) ลง DB</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Tools ที่โมเดลเรียกได้</h3>
+      <p style="margin:.4em 0"><span class="tag">อ่าน</span></p>
+      <span class="chip mono">search_customers</span>
+      <span class="chip mono">get_customer</span>
+      <span class="chip mono">list_expiring</span>
+      <span class="chip mono">aggregate</span>
+      <span class="chip mono">list_team</span>
+      <p style="margin:.8em 0 .4em"><span class="tag" style="background:#e7f0e9;color:#3f7a52;border-color:#bcd6c4">เขียน</span></p>
+      <span class="chip mono">add_followup</span>
+      <span class="chip mono">remember_about_customer</span>
+      <p class="sub" style="margin-top:14px">"ลงตาราง วันนี้ 14:00 โทรหา ACE" → บันทึกงานจริงลงระบบ เห็นได้ที่หน้า Notifications</p>
+    </div>
+  </div>
+</section>
+
+<!-- 8 — MEMORY -->
+<section class="slide">
+  <div class="kicker">ความจำ · ทำไมบอทตอบ "ลูกค้าที่ฉันดูแล" ได้</div>
+  <h2>3 ชั้นของความจำ</h2>
+  <div class="grid g3 fill">
+    <div class="card"><h3>PROFILE</h3><p>จำว่าผู้ใช้คือใคร — อีเมลจริงจาก login + เป็น AE คนไหน + บทบาท → คำถามคลุมเครือตอบเฉพาะของคนนั้น</p></div>
+    <div class="card"><h3>CHAT (rolling)</h3><p>จำบทสนทนาล่าสุดต่อเนื่อง → ถามต่อเนื่องได้โดยไม่ต้องเท้าความใหม่</p></div>
+    <div class="card"><h3>CUSTOM</h3><p>พูดว่า "จำไว้นะ ..." → เก็บโน้ตส่วนตัวของผู้ใช้</p></div>
+    <div class="card" style="grid-column:1/-1;border-color:#9aa9c4;background:#f6f8fc">
+      <h3>Customer Memory — ความจำของทีม (institutional)</h3>
+      <p>AI ดึงข้อเท็จจริงจากแชทมาบันทึกต่อลูกค้าแต่ละราย (หรือผู้ใช้เพิ่มเอง) → รอบหน้าใครถามถึงลูกค้ารายนี้ บอทดึงความจำมาเสริมได้ทันที — ความรู้ไม่หายไปกับคนใดคนหนึ่ง</p>
+    </div>
+  </div>
+</section>
+
+<!-- 9 — DB SCHEMA -->
+<section class="slide">
+  <div class="kicker">ฐานข้อมูล · ตารางหลัก</div>
+  <h2>Data Model</h2>
+  <div class="grid g2 fill">
+    <div class="card"><h3>customers <span class="sub">— 1 แถว/1 account</span></h3>
+      <p class="mono" style="font-size:13px;line-height:1.9;color:#475569">
+        account (PK) · company_name_th/en<br>
+        ae_ir · contract_type · period_months<br>
+        monthly_payment · latest_value<br>
+        effective_date · expiry_date<br>
+        contract_status · market · industry<br>
+        grade · ir_team · contact_email · cc_emails<br>
+        extra (JSON: มูลค่ารายปี ฯลฯ)
+      </p>
+    </div>
+    <div>
+      <div class="card" style="margin-bottom:14px"><h3>followups</h3><p>งานติดตาม/โน้ตต่อลูกค้า · due_date · done · source = manual | chat</p></div>
+      <div class="card" style="margin-bottom:14px"><h3>customer_memory · user_memory</h3><p>ความจำทีมต่อลูกค้า + ความจำผู้ใช้ (PROFILE/CHAT/CUSTOM)</p></div>
+      <div class="card"><h3>issue_log · improvement_report · learned_guidance</h3><p>ระบบ self-improvement: log ปัญหา + รายงานวิเคราะห์ + คำแนะนำที่เรียนรู้ (รออนุมัติ)</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 10 — API -->
+<section class="slide">
+  <div class="kicker">API หลัก · REST / JSON</div>
+  <h2>Endpoints ที่ frontend เรียก</h2>
+  <div class="fill" style="overflow:auto">
+    <table>
+      <tr><th>Method</th><th>Path</th><th>หน้าที่</th></tr>
+      <tr><td><span class="meth POST">POST</span></td><td class="mono">/api/chat</td><td>แชท (function-calling + memory)</td></tr>
+      <tr><td><span class="meth GET">GET</span></td><td class="mono">/api/customers</td><td>ตารางลูกค้า (search / filter / paginate)</td></tr>
+      <tr><td><span class="meth GET">GET</span></td><td class="mono">/api/customers/expiring · /contacts</td><td>สัญญาใกล้หมด · IR Contact</td></tr>
+      <tr><td><span class="meth GET">GET</span> <span class="meth POST">POST</span> <span class="meth PUT">PUT</span></td><td class="mono">/api/customers[/{account}]</td><td>ดู / เพิ่ม / แก้ลูกค้า</td></tr>
+      <tr><td><span class="meth GET">GET</span></td><td class="mono">/api/dashboard · /aes</td><td>สรุปทั้งทีม + แยกตาม AE · รายชื่อ AE</td></tr>
+      <tr><td><span class="meth GET">GET</span></td><td class="mono">/api/export/customers</td><td>ดาวน์โหลด CSV ตามตัวกรอง</td></tr>
+      <tr><td><span class="meth GET">GET</span> <span class="meth POST">POST</span> <span class="meth PUT">PUT</span> <span class="meth DEL">DEL</span></td><td class="mono">/api/followups · /{id}</td><td>งานติดตามทั้งทีม / ของลูกค้า</td></tr>
+      <tr><td><span class="meth GET">GET</span></td><td class="mono">/api/notifications?ae=</td><td>รายการแจ้งเตือน + count กระดิ่ง</td></tr>
+      <tr><td><span class="meth GET">GET</span> <span class="meth POST">POST</span></td><td class="mono">/api/profile · /ae-emails</td><td>ตั้งตัวตนผู้ใช้ · mapping AE → อีเมล</td></tr>
+    </table>
+  </div>
+</section>
+
+<!-- 11 — SELF IMPROVE -->
+<section class="slide">
+  <div class="kicker">ความพิเศษ · ระบบพัฒนาตัวเอง (ปลอดภัย)</div>
+  <h2>Self-Improvement Loop</h2>
+  <div class="fill">
+    <div class="flowrow" style="margin-bottom:20px">
+      <div class="box">ทุกการแชท<small>log ปัญหา/คำตอบที่ตอบไม่ได้</small></div>
+      <div class="arrow">→</div>
+      <div class="box a">Cron เที่ยงคืน<small>วิเคราะห์ + เสนอ guidance</small></div>
+      <div class="arrow">→</div>
+      <div class="box k">Admin Dashboard<small>วิศวกรกดอนุมัติ</small></div>
+    </div>
+    <div class="card" style="border-color:#c9a96a;background:#fcf9f2">
+      <h3>หลักความปลอดภัย</h3>
+      <p>ระบบ <b>วิเคราะห์ปัญหาเอง + เสนอทางแก้</b> ทุกคืน — แต่ <b>ไม่แก้โค้ด / ไม่เปลี่ยน prompt เองอัตโนมัติ</b>
+      คำแนะนำที่เสนอจะ <b>inactive</b> จนกว่าวิศวกรจะกดอนุมัติใน dashboard (จำกัดสูงสุด 10 ข้อ กัน prompt บวม)</p>
+    </div>
+    <p class="sub" style="margin-top:14px">ป้องกันด้วย <span class="mono">ADMIN_TOKEN</span> · แจ้งเตือนผู้ดูแลทางอีเมล</p>
+  </div>
+</section>
+
+<!-- 12 — SALES RADAR (chart) -->
+<section class="slide">
+  <div class="kicker">มูลค่าทางธุรกิจ · Sales Opportunity Radar</div>
+  <h2>3 ช่องทางรายได้ จากข้อมูลที่มีอยู่</h2>
+  <div class="grid g2 fill">
+    <div>
+      <div class="barchart">
+        <div class="col"><div class="b" style="height:78%"><span>Retain</span></div><div class="lbl">รักษาลูกค้า<br>ใกล้หมด+เสี่ยงหลุด</div></div>
+        <div class="col"><div class="b" style="height:52%"><span>Winback</span></div><div class="lbl">ดึงกลับ<br>ยกเลิก/หมด เรียงมูลค่า</div></div>
+        <div class="col"><div class="b" style="height:64%"><span>Upsell</span></div><div class="lbl">ขายเพิ่ม<br>IR-only → เสนอ WD</div></div>
+      </div>
+      <p class="sub" style="margin-top:10px;text-align:center">* แท่ง = ภาพประกอบสัดส่วนโอกาส (คำนวณ real-time จาก DB)</p>
+    </div>
+    <div>
+      <div class="card" style="margin-bottom:12px"><h3>Retain — รักษา</h3><p>สัญญาใกล้หมด + คะแนนเสี่ยงหลุด (มูลค่าลดลง YoY, เกรดต่ำ, remark เชิงลบ)</p></div>
+      <div class="card" style="margin-bottom:12px"><h3>Winback — ดึงกลับ</h3><p>ลูกค้าที่ยกเลิก/หมดอายุ เรียงตามมูลค่าเดิม → ไล่ติดต่อรายใหญ่ก่อน</p></div>
+      <div class="card"><h3>Upsell — ขายเพิ่ม</h3><p>ลูกค้าซื้อ IR อย่างเดียว เรียงตามเกรด+มูลค่า → เสนอ WD เพิ่ม</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 13 — SUMMARY -->
+<section class="slide">
+  <div class="kicker">สรุป</div>
+  <h2>SalesBot — ครบจบในที่เดียว</h2>
+  <div class="grid g4" style="margin:10px 0 6px">
+    <div class="card" style="text-align:center"><div class="stat">1<small>SPA + API process</small></div></div>
+    <div class="card" style="text-align:center"><div class="stat">7<small>AI Tools (อ่าน/เขียน)</small></div></div>
+    <div class="card" style="text-align:center"><div class="stat">3<small>ชั้นความจำ + ทีม</small></div></div>
+    <div class="card" style="text-align:center"><div class="stat">3<small>ช่องทางรายได้ (Radar)</small></div></div>
+  </div>
+  <div class="grid g2 fill">
+    <div class="card"><h3>จุดเด่นเชิงเทคนิค</h3>
+      <ul class="clean">
+        <li>Stack เบา deploy ง่าย — FastAPI + SQLite ใน Docker container เดียว</li>
+        <li>ตอบจากข้อมูลจริงเสมอด้วย function-calling (ไม่ hallucinate ตัวเลข)</li>
+        <li>พร้อมโต — สลับ Postgres ได้ด้วยตัวแปรเดียว</li>
+        <li>มีความจำระดับทีม + ระบบพัฒนาตัวเองแบบมีมนุษย์อนุมัติ</li>
+      </ul>
+    </div>
+    <div class="card" style="border-color:#9aa9c4;background:#f6f8fc"><h3>คุณค่ากับทีม IR Sales</h3>
+      <ul class="clean">
+        <li>ถามภาษาคน ได้คำตอบทันที — ไม่ต้องเปิด Excel</li>
+        <li>เห็นภาพรวมทีม + งานของตัวเอง ครบในเว็บ</li>
+        <li>ไม่พลาดสัญญาใกล้หมด + โอกาสขายต่อ/ขายเพิ่ม</li>
+        <li>ความรู้เรื่องลูกค้าอยู่กับทีม ไม่หายไปกับคน</li>
+      </ul>
+    </div>
+  </div>
+  <div style="text-align:center;margin-top:18px"><span class="url">https://salesbot.ohmai.me</span></div>
+</section>
+
+</div>
+
+<div class="pageno" id="pageno">1 / 13</div>
+<div class="footbrand">SALESBOT · IR SALES INTELLIGENCE</div>
+<div class="hint">← → / Space เปลี่ยนสไลด์ · F เต็มจอ</div>
+<div class="nav">
+  <button onclick="go(-1)" aria-label="prev">‹</button>
+  <button onclick="go(1)" aria-label="next">›</button>
+</div>
+
+<script>
+  const slides=[...document.querySelectorAll('.slide')];
+  let i=0;
+  function render(){
+    slides.forEach((s,n)=>s.classList.toggle('active',n===i));
+    document.getElementById('pageno').textContent=(i+1)+' / '+slides.length;
+    document.getElementById('bar').style.width=((i+1)/slides.length*100)+'%';
+  }
+  function go(d){i=Math.min(slides.length-1,Math.max(0,i+d));render();}
+  document.addEventListener('keydown',e=>{
+    if(e.key==='ArrowRight'||e.key===' '||e.key==='PageDown'){e.preventDefault();go(1);}
+    else if(e.key==='ArrowLeft'||e.key==='PageUp'){e.preventDefault();go(-1);}
+    else if(e.key==='Home'){i=0;render();}
+    else if(e.key==='End'){i=slides.length-1;render();}
+    else if(e.key.toLowerCase()==='f'){
+      if(!document.fullscreenElement)document.documentElement.requestFullscreen();
+      else document.exitFullscreen();
+    }
+  });
+  // swipe (touch)
+  let x0=null;
+  addEventListener('touchstart',e=>x0=e.touches[0].clientX);
+  addEventListener('touchend',e=>{if(x0===null)return;const dx=e.changedTouches[0].clientX-x0;if(Math.abs(dx)>50)go(dx<0?1:-1);x0=null;});
+  render();
+</script>
+</body>
+</html>

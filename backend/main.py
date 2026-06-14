@@ -27,10 +27,11 @@ from database import Base, engine, get_db
 from memory_manager import CustomerMemoryManager, UserMemoryManager
 import improve
 import radar
-from models import Customer, FollowUp, ImprovementReport, IssueLog, LearnedGuidance, MemoryType
+from models import Customer, FollowUp, ImprovementReport, IssueLog, LearnedGuidance, MemoryType, UserCredential
 from notifications import (get_ae_emails, has_user_smtp, notification_summary,
                            send_expiry_digest, set_ae_emails, set_user_smtp)
 from services import customer_full, customer_summary, dashboard_data, expiry_state
+from microsoft_teams import get_oauth_url, exchange_code_for_token, get_user_info, store_credential
 
 load_dotenv()
 Base.metadata.create_all(bind=engine)
@@ -45,6 +46,83 @@ def _migrate_db():
             conn.commit()
 
 _migrate_db()
+
+# ── APScheduler for 30-min reminders ───────────────────────────────────────────
+from apscheduler.schedulers.background import BackgroundScheduler
+from datetime import timedelta
+from microsoft_teams import create_calendar_event
+import asyncio
+
+scheduler = BackgroundScheduler()
+
+
+def send_30min_reminders_sync():
+    """Check tasks due in 30 min and send Teams reminders (sync wrapper)."""
+    from database import SessionLocal
+    db = SessionLocal()
+    try:
+        now = datetime.utcnow()
+        in_30min = now + timedelta(minutes=30)
+
+        # Find tasks that are pending and due in next 30 minutes
+        pending_tasks = db.query(FollowUp).filter(
+            FollowUp.done == False,
+            FollowUp.due_date >= now,
+            FollowUp.due_date <= in_30min,
+        ).all()
+
+        for task in pending_tasks:
+            if not task.created_by:
+                continue
+
+            # Get user credentials for Teams integration
+            cred = db.query(UserCredential).filter(
+                UserCredential.name == task.created_by
+            ).first()
+
+            if cred:
+                # Create calendar event synchronously (simplified)
+                try:
+                    end_dt = task.due_date + timedelta(hours=1) if task.due_date else now + timedelta(hours=1)
+                    import requests
+                    headers = {
+                        "Authorization": f"Bearer {cred.access_token}",
+                        "Content-Type": "application/json",
+                    }
+                    body = {
+                        "subject": task.note,
+                        "start": {"dateTime": task.due_date.isoformat(), "timeZone": "UTC"},
+                        "end": {"dateTime": end_dt.isoformat(), "timeZone": "UTC"},
+                        "bodyPreview": f"Account: {task.account or 'General'}",
+                    }
+                    requests.post(
+                        "https://graph.microsoft.com/v1.0/me/events",
+                        headers=headers,
+                        json=body,
+                        timeout=10,
+                    )
+                except Exception as e:
+                    print(f"Calendar event creation error: {e}")
+    except Exception as e:
+        print(f"Scheduled reminder error: {e}")
+    finally:
+        db.close()
+
+
+def start_scheduler():
+    """Start background scheduler."""
+    if not scheduler.running:
+        scheduler.add_job(
+            send_30min_reminders_sync,
+            'interval',
+            minutes=5,  # Check every 5 minutes
+            id='send_reminders',
+            replace_existing=True
+        )
+        scheduler.start()
+
+
+start_scheduler()
 
 FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o")
@@ -520,6 +598,37 @@ def get_profile(user_email: str, db: Session = Depends(get_db)):
 def set_profile(body: ProfileIn, db: Session = Depends(get_db)):
     rec = UserMemoryManager.save_profile(db, body.user_email, body.full_name, body.ae_name)
     return rec.content
+
+
+# ── Microsoft Teams OAuth ──────────────────────────────────────────────────────
+@app.get("/auth/microsoft/login")
+def microsoft_login():
+    """Redirect to Azure AD login."""
+    return {"login_url": get_oauth_url()}
+
+
+@app.get("/auth/microsoft/callback")
+async def microsoft_callback(code: str, db: Session = Depends(get_db)):
+    """Handle OAuth callback from Azure AD."""
+    from fastapi.responses import RedirectResponse
+
+    if not code:
+        raise HTTPException(400, "Missing authorization code")
+
+    token_response = await exchange_code_for_token(code)
+    if not token_response:
+        raise HTTPException(400, "Failed to exchange code for token")
+
+    user_info = await get_user_info(token_response.get("access_token", ""))
+    if not user_info:
+        raise HTTPException(400, "Failed to get user info")
+
+    email = user_info.get("userPrincipalName") or user_info.get("mail")
+    name = user_info.get("displayName")
+
+    cred = store_credential(db, email, name, token_response)
+    # Redirect to home page with login info
+    return RedirectResponse(url=f"/?login=success&email={email}&name={name}")
 
 
 # ── Chat (function-calling + memory) ─────────────────────────────────────────
