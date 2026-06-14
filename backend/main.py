@@ -609,9 +609,17 @@ def microsoft_login():
 
 
 @app.get("/auth/microsoft/callback")
-async def microsoft_callback(code: str, db: Session = Depends(get_db)):
+async def microsoft_callback(
+    db: Session = Depends(get_db),
+    code: Optional[str] = None,
+    error: Optional[str] = None,
+    error_description: Optional[str] = None,
+):
     """Handle OAuth callback from Azure AD."""
     from fastapi.responses import RedirectResponse
+
+    if error:
+        return RedirectResponse(url=f"/?login=error&msg={error_description or error}")
 
     if not code:
         raise HTTPException(400, "Missing authorization code")
