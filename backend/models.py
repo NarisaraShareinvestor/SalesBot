@@ -66,6 +66,7 @@ class FollowUp(Base):
     done = Column(Boolean, default=False)
     created_by = Column(String(100), nullable=True)
     source = Column(String(20), default="manual")  # manual | chat
+    is_shared = Column(Boolean, default=False)  # False=ส่วนตัว, True=แชร์ทีม
     created_at = Column(DateTime, default=func.now())
 
 

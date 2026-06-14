@@ -185,6 +185,30 @@
   .fu-add input{flex:1;border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:13px;font-family:inherit;outline:none}
   .fu-add input[type=date]{flex:0 0 145px}
   .empty{padding:34px;text-align:center;color:var(--faint);font-size:13px}
+  /* Schedule modal — visibility cards */
+  .sched-info{background:#f7f8fa;border:1px solid var(--line2);border-radius:11px;padding:14px 16px;margin-bottom:18px}
+  .sched-info-row{display:flex;align-items:center;gap:10px;padding:6px 0;font-size:13px}
+  .sched-info-row:first-child{padding-top:0}.sched-info-row:last-child{padding-bottom:0}
+  .sched-info-ico{width:28px;height:28px;border-radius:7px;background:#eceef1;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--ink2)}
+  .sched-info-row .lab{font-size:11.5px;color:var(--muted);width:90px;flex-shrink:0}
+  .sched-info-row .val{font-weight:500;color:var(--ink)}
+  .sched-vis-label{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:10px}
+  .sched-vis-cards{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px}
+  .sched-vis-card{border:2px solid var(--line);border-radius:12px;padding:14px 14px;cursor:pointer;transition:border-color .15s,background .15s;position:relative;user-select:none}
+  .sched-vis-card:hover{border-color:var(--ink2)}
+  .sched-vis-card.selected{border-color:#5b5ef4;background:#f4f4ff}
+  .sched-vis-card .radio-dot{width:18px;height:18px;border-radius:50%;border:2px solid var(--line);position:absolute;top:13px;right:13px;display:flex;align-items:center;justify-content:center;transition:border-color .15s,background .15s}
+  .sched-vis-card.selected .radio-dot{border-color:#5b5ef4;background:#5b5ef4}
+  .sched-vis-card.selected .radio-dot::after{content:"";width:6px;height:6px;border-radius:50%;background:#fff}
+  .sched-vis-card .vc-icon{width:34px;height:34px;border-radius:9px;background:#eceef1;display:flex;align-items:center;justify-content:center;color:var(--ink2);margin-bottom:10px;transition:background .15s}
+  .sched-vis-card.selected .vc-icon{background:#e0e0ff;color:#5b5ef4}
+  .sched-vis-card .vc-title{font-size:13.5px;font-weight:600;color:var(--ink);margin-bottom:3px}
+  .sched-vis-card .vc-sub{font-size:12px;color:var(--muted);line-height:1.45}
+  .sched-vis-card .vc-detail{font-size:11.5px;color:var(--faint);margin-top:8px;padding-top:8px;border-top:1px solid var(--line2);line-height:1.45}
+  .sched-remind{display:flex;align-items:center;gap:10px;padding:12px 14px;background:#f7f8fa;border-radius:10px;margin-bottom:20px;font-size:13px}
+  .sched-remind input[type=checkbox]{width:15px;height:15px;cursor:pointer;accent-color:#5b5ef4}
+  .sched-remind select{border:1px solid var(--line);border-radius:7px;padding:4px 8px;font-size:12.5px;font-family:inherit;outline:none;background:var(--card);color:var(--ink);cursor:pointer}
+
   /* Nav count + Notifications page */
   .navcount{font-size:11px;font-weight:600;background:#eceef1;color:var(--ink2);border-radius:20px;padding:1px 8px;min-width:20px;text-align:center}
   .nav a.active .navcount{background:rgba(255,255,255,.22);color:#fff}
@@ -504,6 +528,81 @@
     </div></div>
   </div></div>
 
+  <!-- Schedule modal — บันทึกลงตารางเวลา -->
+  <div class="modal" id="scheduleModal"><div class="box" style="width:500px">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:6px">
+      <div style="width:40px;height:40px;border-radius:11px;background:#e0e0ff;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+        <svg class="ico" style="color:#5b5ef4" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+      </div>
+      <div>
+        <h3 style="margin:0;font-size:16px">บันทึกลงตารางเวลา</h3>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px">ตรวจสอบงาน/บัดหมายจากข้อความของคุณ</div>
+      </div>
+    </div>
+
+    <div class="sched-info">
+      <div class="sched-info-row">
+        <div class="sched-info-ico"><svg class="ico" style="width:15px;height:15px" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+        <span class="lab">ชื่องาน</span>
+        <span class="val" id="sc_note">—</span>
+      </div>
+      <div class="sched-info-row">
+        <div class="sched-info-ico"><svg class="ico" style="width:15px;height:15px" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></div>
+        <span class="lab">วันที่และเวลา</span>
+        <span class="val" id="sc_datetime">—</span>
+      </div>
+      <div class="sched-info-row">
+        <div class="sched-info-ico"><svg class="ico" style="width:15px;height:15px" viewBox="0 0 24 24"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+        <span class="lab">ผู้รับผิดชอบ</span>
+        <span class="val" id="sc_owner">—</span>
+      </div>
+      <div class="sched-info-row">
+        <div class="sched-info-ico"><svg class="ico" style="width:15px;height:15px" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+        <span class="lab">ที่มา</span>
+        <span class="val">Chat</span>
+      </div>
+    </div>
+
+    <div class="sched-vis-label">เลือกการมองเห็น<br><span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:11.5px">เลือกว่าจะบันทึกงานนี้เป็นของคุณคนเดียว หรือแชร์ให้ทีมเห็น</span></div>
+    <div class="sched-vis-cards">
+      <div class="sched-vis-card selected" id="sc_card_private" onclick="selectScheduleVis('private')">
+        <div class="radio-dot"></div>
+        <div class="vc-icon">
+          <svg class="ico" style="width:17px;height:17px" viewBox="0 0 24 24"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        </div>
+        <div class="vc-title">ส่วนตัว</div>
+        <div class="vc-sub">เห็นเฉพาะคุณเท่านั้น</div>
+        <div class="vc-detail">• งานจะปรากฏในตารางเวลาส่วนตัว<br>และ Notifications ของคุณ</div>
+      </div>
+      <div class="sched-vis-card" id="sc_card_shared" onclick="selectScheduleVis('shared')">
+        <div class="radio-dot"></div>
+        <div class="vc-icon">
+          <svg class="ico" style="width:17px;height:17px" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        </div>
+        <div class="vc-title">แชร์ให้ทีม</div>
+        <div class="vc-sub">ทุกคนในทีมสามารถเห็นได้</div>
+        <div class="vc-detail">• งานจะปรากฏในตารางทีม<br>และ Notifications ของทุกคน</div>
+      </div>
+    </div>
+
+    <div class="sched-remind">
+      <input type="checkbox" id="sc_remind" checked>
+      <svg class="ico" style="width:15px;height:15px;color:var(--muted)" viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+      <span style="color:var(--ink2)">แจ้งเตือนก่อนเวลา</span>
+      <select id="sc_remind_min">
+        <option value="15">15 นาที</option>
+        <option value="30" selected>30 นาที</option>
+        <option value="60">1 ชั่วโมง</option>
+        <option value="1440">1 วัน</option>
+      </select>
+    </div>
+
+    <div class="actions">
+      <button class="btn" onclick="document.getElementById('scheduleModal').classList.remove('open')">ยกเลิก</button>
+      <button class="btn primary" onclick="saveScheduleTask()" id="sc_save_btn">บันทึก</button>
+    </div>
+  </div></div>
+
   <!-- Login modal -->
   <div class="modal" id="loginModal"><div class="box" style="width:420px">
     <div style="display:flex;align-items:center;gap:11px;margin-bottom:6px">
@@ -700,7 +799,8 @@ async function loadDashboard(){
   loadTasks();
 }
 async function loadTasks(){
-  const q=meAE()?`?ae=${encodeURIComponent(meAE())}`:"";
+  const p=new URLSearchParams();if(meAE())p.set("ae",meAE());if(me&&me.name)p.set("user_name",me.name);
+  const q=p.toString()?`?${p}`:"";
   const d=await (await fetch(`${API}/api/followups${q}`)).json();
   const el=document.getElementById("taskList");
   if(!d.length){el.innerHTML='<div class="mut" style="font-size:13px;padding:6px 0">ยังไม่มีงานติดตาม — ลองพิมพ์ในแชท เช่น "ลงตารางวันนี้ 14:00 โทรหา ACE"</div>';return;}
@@ -845,9 +945,10 @@ async function loadBellPopup(){
 
 async function loadNotifBadge(){
   // badge = สัญญาใกล้หมด + งานค้างที่ถึง/เลยกำหนด
+  const un=me&&me.name?`&user_name=${encodeURIComponent(me.name)}`:"";
   const [n,t]=await Promise.all([
     fetch(`${API}/api/notifications`).then(r=>r.json()),
-    fetch(`${API}/api/followups?pending=true`).then(r=>r.json()),
+    fetch(`${API}/api/followups?pending=true${un}`).then(r=>r.json()),
   ]);
   const dueTasks=t.filter(x=>{const d=daysFromToday(x.due_date);return d!==null&&d<=0;}).length;
   const c=n.count+dueTasks;
@@ -856,9 +957,10 @@ async function loadNotifBadge(){
 }
 
 async function loadNotifPage(){
+  const un=me&&me.name?`&user_name=${encodeURIComponent(me.name)}`:"";
   const [exp,tasks]=await Promise.all([
     fetch(`${API}/api/customers/expiring`).then(r=>r.json()),
-    fetch(`${API}/api/followups?pending=false`).then(r=>r.json()),
+    fetch(`${API}/api/followups?pending=false${un}`).then(r=>r.json()),
   ]);
   notifData={tasks,exp:exp.items||[]};
   renderNotifChips();
@@ -884,6 +986,10 @@ function notifItems(){
   return out;
 }
 function passFilter(it,f){
+  // แท็บ "เสร็จแล้ว" — เห็นเฉพาะ done tasks
+  if(f==="done") return it.kind!=="expiring" && it.done;
+  // แท็บอื่นทั้งหมด — ซ่อน done tasks
+  if(it.done) return false;
   if(f==="all")return true;
   if(f==="today")return it.days===0;
   if(f==="week")return it.days!==null&&it.days>=0&&it.days<=7;
@@ -894,9 +1000,16 @@ function passFilter(it,f){
 }
 function renderNotifChips(){
   const items=notifItems();
-  const defs=[["all","ทั้งหมด"],["today","วันนี้"],["week","7 วันข้างหน้า"],["expiring","สัญญาใกล้หมดอายุ"],["followup","Follow-up"],["chat","จาก Chat"]];
+  const active=items.filter(it=>!it.done);
+  const defs=[
+    ["all","ทั้งหมด"],["today","วันนี้"],["week","7 วันข้างหน้า"],
+    ["expiring","สัญญาใกล้หมดอายุ"],["followup","Follow-up"],["chat","จาก Chat"],
+    ["done","เสร็จแล้ว"],
+  ];
   document.getElementById("notifChips").innerHTML=defs.map(([k,label])=>{
-    const n=items.filter(it=>passFilter(it,k)).length;
+    const n=k==="done"
+      ? items.filter(it=>it.kind!=="expiring"&&it.done).length
+      : active.filter(it=>passFilter(it,k)).length;
     return `<button class="chip-f ${k===notifFilter?'active':''}" onclick="setNotifFilter('${k}')">${label}<span class="n">${n}</span></button>`;
   }).join("");
 }
@@ -919,18 +1032,31 @@ function iconFor(kind){
   return '<svg class="ico" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>';
 }
 function renderNotifList(){
-  const items=notifItems().filter(it=>passFilter(it,notifFilter))
-    .sort((a,b)=>(a.days==null?9999:a.days)-(b.days==null?9999:b.days));
+  const items=notifItems().filter(it=>passFilter(it,notifFilter));
+  // active: overdue ขึ้นก่อน → วันนี้ → เรียงตามวัน → ไม่มีกำหนด
+  // done: เรียงล่าสุดขึ้นก่อน (ไม่มี due_date → ขึ้นบน)
+  if(notifFilter==="done"){
+    items.sort((a,b)=>(b.days==null?-9999:b.days)-(a.days==null?-9999:a.days));
+  } else {
+    items.sort((a,b)=>{
+      const da=a.days==null?9999:a.days, db=b.days==null?9999:b.days;
+      return da-db;
+    });
+  }
   const el=document.getElementById("notifList");
-  if(!items.length){el.innerHTML='<div class="empty">ไม่มีรายการ</div>';return;}
+  if(!items.length){
+    el.innerHTML=`<div class="empty">${notifFilter==="done"?"ยังไม่มีงานที่เสร็จแล้ว":"ไม่มีรายการ"}</div>`;
+    return;
+  }
   el.innerHTML=items.map(it=>{
-    const urgent=it.days!=null&&it.days<0?'red':(it.days===0?'amber':'');
+    const urgent=!it.done&&it.days!=null&&it.days<0?'red':(!it.done&&it.days===0?'amber':'');
     const whenTxt=it.due?(fmtDate(it.due)+(it.dueTime?` ${it.dueTime} น.`:"")
        +(it.days!=null?` · ${it.days<0?`เลย ${-it.days} วัน`:(it.days===0?"วันนี้":`อีก ${it.days} วัน`)}`:"")):"ไม่มีกำหนด";
     const act=it.kind==="expiring"
       ? `<button class="lnk" onclick="editCustomer('${it.account}')">ดูรายละเอียด</button>`
-      : (it.done?`<button class="lnk" onclick="reopenTask(${it.id})">เปิดใหม่</button>`
-                : `<button class="lnk" onclick="snoozeTask(${it.id},'${it.due||''}')">เลื่อน</button><button class="btn" onclick="doneTask(${it.id})">ทำเสร็จ</button>`);
+      : (it.done
+          ? `<button class="lnk" onclick="reopenTask(${it.id})">เปิดใหม่</button>`
+          : `<button class="lnk" onclick="snoozeTask(${it.id},'${it.due||''}')">เลื่อน</button><button class="btn" onclick="doneTask(${it.id})">ทำเสร็จ</button>`);
     return `<div class="nrow ${it.done?'done':''}">
       <span class="dot ${urgent}"></span>
       <span class="nicon">${iconFor(it.kind)}</span>
@@ -1198,6 +1324,100 @@ async function adminRunNightly(){
   }catch(e){const m=document.getElementById("runMsg");if(m)m.textContent="ผิดพลาด";}
 }
 
+/* ── Schedule Modal ── */
+let _schedData={};
+const SCHED_KEYWORDS=/ลงตาราง|นัดพบ|นัดหมาย|follow.?up|ฟอลโลอัพ|บันทึกนัด|จองเวลา|ลงนัด|นัด[ลูก]|reminder|เตือน.*นัด/i;
+const THAI_MONTHS={"ม.ค.":1,"ก.พ.":2,"มี.ค.":3,"เม.ย.":4,"พ.ค.":5,"มิ.ย.":6,"ก.ค.":7,"ส.ค.":8,"ก.ย.":9,"ต.ค.":10,"พ.ย.":11,"ธ.ค.":12};
+
+function _parseSchedule(msg){
+  const now=new Date();
+  let date=null,time=null,note=msg;
+
+  // time: "14:00", "14.00", "14 น.", "บ่าย 2 โมง"
+  let tm=msg.match(/(\d{1,2})[:.:](\d{2})/);
+  if(tm){time=`${tm[1].padStart(2,'0')}:${tm[2]}`;note=note.replace(tm[0],'').trim();}
+  else{
+    let thai=msg.match(/บ่าย\s*(\d+)\s*โมง/i)||msg.match(/(\d+)\s*โมงเย็น/i)||msg.match(/(\d+)\s*โมงเช้า/i);
+    if(thai){
+      let h=parseInt(thai[1]);
+      if(msg.includes('บ่าย')||msg.includes('เย็น'))h=h<12?h+12:h;
+      time=`${h.toString().padStart(2,'0')}:00`;note=note.replace(thai[0],'').trim();
+    }
+  }
+
+  // date: "วันนี้","พรุ่งนี้","dd/mm","dd มิ.ย."
+  if(/วันนี้|today/i.test(msg)){date=now;note=note.replace(/วันนี้|today/gi,'').trim();}
+  else if(/พรุ่งนี้|tomorrow/i.test(msg)){date=new Date(now);date.setDate(date.getDate()+1);note=note.replace(/พรุ่งนี้|tomorrow/gi,'').trim();}
+  else{
+    let dm=msg.match(/(\d{1,2})\s*(ม\.ค\.|ก\.พ\.|มี\.ค\.|เม\.ย\.|พ\.ค\.|มิ\.ย\.|ก\.ค\.|ส\.ค\.|ก\.ย\.|ต\.ค\.|พ\.ย\.|ธ\.ค\.)/);
+    if(dm){
+      const mo=THAI_MONTHS[dm[2]]||now.getMonth()+1;
+      date=new Date(now.getFullYear(),mo-1,parseInt(dm[1]));
+      note=note.replace(dm[0],'').trim();
+    } else{
+      let nd=msg.match(/(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?/);
+      if(nd){
+        const y=nd[3]?parseInt(nd[3])+(parseInt(nd[3])<100?2000:0):now.getFullYear();
+        date=new Date(y,parseInt(nd[2])-1,parseInt(nd[1]));
+        note=note.replace(nd[0],'').trim();
+      }
+    }
+  }
+
+  // clean up keywords from note
+  note=note.replace(SCHED_KEYWORDS,'').replace(/\s{2,}/g,' ').trim()||msg.trim();
+
+  let dateStr=null,timeStr=null;
+  if(date){dateStr=date.toISOString().slice(0,10);}
+  if(time){timeStr=time;}
+
+  // display string
+  let dtDisplay='—';
+  if(date||time){
+    const opts={day:'numeric',month:'short',year:'numeric'};
+    dtDisplay=(date?date.toLocaleDateString('th-TH',opts):'')+(time?' '+time:'');
+  }
+  return{note,dateStr,timeStr,dtDisplay};
+}
+
+function openScheduleModal(msg){
+  const p=_parseSchedule(msg);
+  _schedData={...p,rawMsg:msg,vis:'private'};
+  document.getElementById('sc_note').textContent=p.note||'—';
+  document.getElementById('sc_datetime').textContent=p.dtDisplay||'—';
+  document.getElementById('sc_owner').textContent=(me&&me.name)?me.name:'—';
+  selectScheduleVis('private');
+  document.getElementById('scheduleModal').classList.add('open');
+}
+
+function selectScheduleVis(type){
+  _schedData.vis=type;
+  document.getElementById('sc_card_private').classList.toggle('selected',type==='private');
+  document.getElementById('sc_card_shared').classList.toggle('selected',type==='shared');
+}
+
+async function saveScheduleTask(){
+  const btn=document.getElementById('sc_save_btn');
+  btn.disabled=true;btn.textContent='กำลังบันทึก…';
+  const body={
+    note:_schedData.note||_schedData.rawMsg||'งานจากแชท',
+    due_date:_schedData.dateStr||null,
+    due_time:_schedData.timeStr||null,
+    created_by:me?me.name:null,
+    is_shared:_schedData.vis==='shared',
+    source:'chat',
+  };
+  try{
+    const r=await fetch(`${API}/api/followups`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    if(r.ok){
+      document.getElementById('scheduleModal').classList.remove('open');
+      loadNotifBadge();if(state.view==='dashboard')loadTasks();if(state.view==='notif')loadNotifPage();
+      addMsg(`บันทึก${_schedData.vis==='shared'?'(แชร์ทีม)':'(ส่วนตัว)'}: <b>${esc(body.note)}</b>${body.due_date?' — '+body.due_date+(body.due_time?' '+body.due_time:''):''}  ✓`,'bot');
+    }else{const e=await r.json().catch(()=>({}));alert('บันทึกไม่สำเร็จ: '+(e.detail||r.status));}
+  }catch(err){alert('เกิดข้อผิดพลาด');}
+  finally{btn.disabled=false;btn.textContent='บันทึก';}
+}
+
 /* ── Chat ── */
 function addMsg(text,who){
   const b=document.getElementById("chatBody");
@@ -1212,6 +1432,12 @@ function addMsg(text,who){
 async function sendChat(e){
   e.preventDefault();
   const inp=document.getElementById("chatInput");const msg=inp.value.trim();if(!msg)return;
+  // detect schedule intent — show popup instead of sending to AI
+  if(SCHED_KEYWORDS.test(msg)){
+    addMsg(esc(msg),"user");inp.value="";
+    openScheduleModal(msg);
+    return;
+  }
   addMsg(esc(msg),"user");inp.value="";
   addMsg('<span class="mut">กำลังคิด…</span>',"bot");
   const last=document.getElementById("chatBody").lastElementChild;

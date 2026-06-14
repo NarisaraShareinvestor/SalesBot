@@ -35,6 +35,17 @@ from services import customer_full, customer_summary, dashboard_data, expiry_sta
 load_dotenv()
 Base.metadata.create_all(bind=engine)
 
+# ── migrate existing DB: add is_shared column if missing ──────────────────────
+def _migrate_db():
+    from sqlalchemy import text
+    with engine.connect() as conn:
+        cols = [r[1] for r in conn.execute(text("PRAGMA table_info(followups)"))]
+        if "is_shared" not in cols:
+            conn.execute(text("ALTER TABLE followups ADD COLUMN is_shared BOOLEAN DEFAULT 0"))
+            conn.commit()
+
+_migrate_db()
+
 FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o")
 
@@ -321,14 +332,17 @@ def _fu_dict(f: FollowUp) -> dict:
         "due_date": f.due_date.strftime("%Y-%m-%d") if f.due_date else None,
         "due_time": f.due_date.strftime("%H:%M") if (f.due_date and (f.due_date.hour or f.due_date.minute)) else None,
         "done": f.done, "created_by": f.created_by, "source": f.source or "manual",
+        "is_shared": bool(f.is_shared),
         "created_at": f.created_at.isoformat() if f.created_at else None,
     }
 
 
 @app.get("/api/followups")
 def list_followups(db: Session = Depends(get_db), ae: Optional[str] = None,
-                   pending: bool = True, limit: int = 100):
-    """รายการงานติดตามทั้งทีม (เห็นสิ่งที่สั่ง 'ลงตาราง' ผ่านแชท). filter ตาม AE ของลูกค้าได้."""
+                   pending: bool = True, limit: int = 100,
+                   user_name: Optional[str] = None):
+    """รายการงานติดตาม. filter ตาม AE ของลูกค้าได้.
+    user_name: ถ้าระบุ จะคืนเฉพาะ is_shared=true หรือ created_by==user_name (งานส่วนตัวเห็นเฉพาะเจ้าของ)"""
     q = db.query(FollowUp)
     if pending:
         q = q.filter(FollowUp.done == False)  # noqa: E712
@@ -336,6 +350,9 @@ def list_followups(db: Session = Depends(get_db), ae: Optional[str] = None,
                       FollowUp.created_at.desc()).all()
     out = []
     for f in rows:
+        # filter private tasks: ถ้า is_shared=False ต้องเป็นเจ้าของเท่านั้น
+        if user_name and not f.is_shared and f.created_by != user_name:
+            continue
         cust = db.get(Customer, f.account) if f.account else None
         cust_ae = cust.ae_ir if cust else None
         if ae and cust_ae != ae:
@@ -355,6 +372,8 @@ class TaskIn(BaseModel):
     due_time: Optional[str] = None
     account: Optional[str] = None
     created_by: Optional[str] = None
+    is_shared: Optional[bool] = False
+    source: Optional[str] = "manual"
 
 
 @app.post("/api/followups")
@@ -372,7 +391,8 @@ def create_task(body: TaskIn, db: Session = Depends(get_db)):
                 break
             except ValueError:
                 continue
-    f = FollowUp(account=acct, note=body.note, due_date=due, created_by=body.created_by, source="manual")
+    f = FollowUp(account=acct, note=body.note, due_date=due, created_by=body.created_by,
+                 source=body.source or "manual", is_shared=bool(body.is_shared))
     db.add(f)
     db.commit()
     db.refresh(f)
