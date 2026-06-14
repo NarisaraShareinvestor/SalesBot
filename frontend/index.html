@@ -992,7 +992,7 @@ function notifItems(){
     const d=daysFromToday(t.due_date);
     out.push({kind:t.source==="chat"?"chat":"task",id:t.id,done:t.done,
       title:t.note,sub:(t.account?`${t.account}${t.company_name?" · "+t.company_name:""}`:"งานทั่วไป")+(t.created_by?` · โดย ${t.created_by}`:""),
-      account:t.account,due:t.due_date,dueTime:t.due_time,days:d});
+      account:t.account,due:t.due_date,dueTime:t.due_time,days:d,is_shared:t.is_shared});
   });
   notifData.exp.forEach(e=>{
     out.push({kind:"expiring",done:false,
@@ -1350,7 +1350,7 @@ async function adminRunNightly(){
 
 /* ── Schedule Modal ── */
 let _schedData={};
-const SCHED_KEYWORDS=/ลงตาราง|นัดพบ|นัดหมาย|follow.?up|ฟอลโลอัพ|บันทึกนัด|จองเวลา|ลงนัด|นัด[ลูก]|reminder|เตือน.*นัด/i;
+const SCHED_KEYWORDS=/ลงตารางเวลา|ลงตาราง|นัดพบ|นัดหมาย|follow.?up|ฟอลโลอัพ|บันทึกนัด|จองเวลา|ลงนัด|นัด[ลูก]|reminder|เตือน.*นัด/i;
 const THAI_MONTHS={"ม.ค.":1,"ก.พ.":2,"มี.ค.":3,"เม.ย.":4,"พ.ค.":5,"มิ.ย.":6,"ก.ค.":7,"ส.ค.":8,"ก.ย.":9,"ต.ค.":10,"พ.ย.":11,"ธ.ค.":12};
 
 function _parseSchedule(msg){
