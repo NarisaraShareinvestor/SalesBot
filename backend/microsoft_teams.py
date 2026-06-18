@@ -18,9 +18,12 @@ AZURE_TENANT_ID = os.getenv("AZURE_TENANT_ID", "common")
 REDIRECT_URI = os.getenv("REDIRECT_URI", "https://salesbot.ohmai.me/auth/microsoft/callback")
 
 
+SCOPE = "User.Read Calendars.ReadWrite ChatMessage.Send offline_access openid profile email"
+
+
 def get_oauth_url() -> str:
     """Generate Azure AD OAuth login URL."""
-    scope = "Calendars.ReadWrite ChatMessage.Send offline_access"
+    scope = SCOPE
     auth_url = (
         f"https://login.microsoftonline.com/{AZURE_TENANT_ID}/oauth2/v2.0/authorize"
         f"?client_id={AZURE_CLIENT_ID}"
@@ -37,7 +40,7 @@ async def exchange_code_for_token(code: str) -> Optional[dict]:
     token_url = f"https://login.microsoftonline.com/{AZURE_TENANT_ID}/oauth2/v2.0/token"
     data = {
         "client_id": AZURE_CLIENT_ID,
-        "scope": "Calendars.ReadWrite ChatMessage.Send offline_access",
+        "scope": SCOPE,
         "code": code,
         "redirect_uri": REDIRECT_URI,
         "grant_type": "authorization_code",
@@ -47,6 +50,7 @@ async def exchange_code_for_token(code: str) -> Optional[dict]:
         r = requests.post(token_url, data=data, timeout=10)
         if r.status_code == 200:
             return r.json()
+        print(f"Token exchange failed: HTTP {r.status_code} {r.text}")
     except Exception as e:
         print(f"Token exchange error: {e}")
     return None
@@ -59,6 +63,7 @@ async def get_user_info(access_token: str) -> Optional[dict]:
         r = requests.get(f"{GRAPH_API_BASE}/me", headers=headers, timeout=10)
         if r.status_code == 200:
             return r.json()
+        print(f"Get user info failed: HTTP {r.status_code} {r.text}")
     except Exception as e:
         print(f"Get user info error: {e}")
     return None
