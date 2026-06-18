@@ -1,6 +1,7 @@
 """Microsoft Teams / Azure AD OAuth + Microsoft Graph integration."""
 import os
 import json
+import base64
 from datetime import datetime, timedelta
 from typing import Optional
 
@@ -18,7 +19,11 @@ AZURE_TENANT_ID = os.getenv("AZURE_TENANT_ID", "common")
 REDIRECT_URI = os.getenv("REDIRECT_URI", "https://salesbot.ohmai.me/auth/microsoft/callback")
 
 
-SCOPE = "User.Read Calendars.ReadWrite ChatMessage.Send offline_access openid profile email"
+# NOTE: keep this to exactly the permissions already admin-consented for the tenant.
+# The ShareInvestor tenant blocks user self-consent, so any *new* scope (e.g. User.Read)
+# triggers a "Need admin approval" wall. We therefore avoid the Graph /me call and read
+# the signed-in user's identity straight from the token JWT instead — no extra scope needed.
+SCOPE = "Calendars.ReadWrite ChatMessage.Send offline_access"
 
 
 def get_oauth_url() -> str:
@@ -56,16 +61,40 @@ async def exchange_code_for_token(code: str) -> Optional[dict]:
     return None
 
 
-async def get_user_info(access_token: str) -> Optional[dict]:
-    """Get user info from Microsoft Graph."""
-    headers = {"Authorization": f"Bearer {access_token}"}
+def _decode_jwt_claims(token: str) -> dict:
+    """Decode a JWT payload (no signature verification — token comes straight from the
+    Microsoft token endpoint over TLS, so we trust it). Returns {} on any problem."""
     try:
-        r = requests.get(f"{GRAPH_API_BASE}/me", headers=headers, timeout=10)
-        if r.status_code == 200:
-            return r.json()
-        print(f"Get user info failed: HTTP {r.status_code} {r.text}")
+        parts = token.split(".")
+        if len(parts) < 2:
+            return {}
+        payload = parts[1]
+        payload += "=" * (-len(payload) % 4)  # restore base64url padding
+        return json.loads(base64.urlsafe_b64decode(payload))
     except Exception as e:
-        print(f"Get user info error: {e}")
+        print(f"JWT decode error: {e}")
+        return {}
+
+
+def extract_identity(token_response: dict) -> Optional[dict]:
+    """Get {email, name} from the token JWT claims — no Microsoft Graph call required.
+
+    Avoids needing the User.Read scope (and the admin-consent wall it triggers in this
+    tenant). Tries id_token first, then falls back to the access_token; both carry the
+    signed-in user's upn/email/name claims.
+    """
+    for key in ("id_token", "access_token"):
+        tok = token_response.get(key)
+        if not tok:
+            continue
+        claims = _decode_jwt_claims(tok)
+        email = (claims.get("preferred_username") or claims.get("upn")
+                 or claims.get("email") or claims.get("unique_name"))
+        name = claims.get("name")
+        if email:
+            return {"email": email, "name": name or email}
+    print(f"extract_identity: no email claim found; claim keys present: "
+          f"{list(_decode_jwt_claims(token_response.get('access_token', '')).keys())}")
     return None
 
 

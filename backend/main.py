@@ -31,7 +31,7 @@ from models import Customer, FollowUp, ImprovementReport, IssueLog, LearnedGuida
 from notifications import (get_ae_emails, has_user_smtp, notification_summary,
                            send_expiry_digest, set_ae_emails, set_user_smtp)
 from services import customer_full, customer_summary, dashboard_data, expiry_state
-from microsoft_teams import get_oauth_url, exchange_code_for_token, get_user_info, store_credential
+from microsoft_teams import get_oauth_url, exchange_code_for_token, extract_identity, store_credential
 
 load_dotenv()
 Base.metadata.create_all(bind=engine)
@@ -628,12 +628,12 @@ async def microsoft_callback(
     if not token_response:
         raise HTTPException(400, "Failed to exchange code for token")
 
-    user_info = await get_user_info(token_response.get("access_token", ""))
-    if not user_info:
+    identity = extract_identity(token_response)
+    if not identity:
         raise HTTPException(400, "Failed to get user info")
 
-    email = user_info.get("userPrincipalName") or user_info.get("mail")
-    name = user_info.get("displayName")
+    email = identity["email"]
+    name = identity["name"]
 
     cred = store_credential(db, email, name, token_response)
     # Redirect to home page with login info
