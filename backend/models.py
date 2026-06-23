@@ -66,7 +66,8 @@ class FollowUp(Base):
     done = Column(Boolean, default=False)
     created_by = Column(String(100), nullable=True)
     source = Column(String(20), default="manual")  # manual | chat
-    is_shared = Column(Boolean, default=False)  # False=ส่วนตัว, True=แชร์ทีม
+    is_shared = Column(Boolean, default=False)  # False=ส่วนตัว, True=แชร์ทั้งทีม
+    shared_with = Column(Text, nullable=True)   # comma-separated names for specific sharing
     created_at = Column(DateTime, default=func.now())
 
 
@@ -149,6 +150,17 @@ class UserMemory(Base):
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
     is_active = Column(Boolean, default=True)
+
+
+class TeamMember(Base):
+    """สมาชิกทีม — auto-registered เมื่อ login ใช้สำหรับ tag-picker แชร์งาน."""
+    __tablename__ = "team_members"
+
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String(255), unique=True, index=True, nullable=False)
+    full_name = Column(String(255), nullable=True)   # ชื่อจริง
+    nickname = Column(String(100), nullable=False)   # ชื่อเล่น (ae)
+    created_at = Column(DateTime, default=func.now())
 
 
 class UserCredential(Base):
