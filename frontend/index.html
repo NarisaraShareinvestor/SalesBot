@@ -205,6 +205,12 @@
   .sched-vis-card .vc-title{font-size:13.5px;font-weight:600;color:var(--ink);margin-bottom:3px}
   .sched-vis-card .vc-sub{font-size:12px;color:var(--muted);line-height:1.45}
   .sched-vis-card .vc-detail{font-size:11.5px;color:var(--faint);margin-top:8px;padding-top:8px;border-top:1px solid var(--line2);line-height:1.45}
+  .user-tag-picker{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px;padding-top:10px;border-top:1px solid var(--line2);min-height:32px}
+  .user-tag{display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border-radius:20px;font-size:12.5px;font-weight:500;cursor:pointer;border:1.5px solid var(--line);background:var(--surface);color:var(--ink2);transition:all .15s;user-select:none}
+  .user-tag:hover{border-color:#5b5ef4;color:#5b5ef4}
+  .user-tag.picked{border-color:#5b5ef4;background:#5b5ef4;color:#fff}
+  .user-tag.me-tag{opacity:.45;cursor:not-allowed}
+  .user-tag-empty{font-size:12px;color:var(--faint);padding:4px 0}
   .sched-remind{display:flex;align-items:center;gap:10px;padding:12px 14px;background:#f7f8fa;border-radius:10px;margin-bottom:20px;font-size:13px}
   .sched-remind input[type=checkbox]{width:15px;height:15px;cursor:pointer;accent-color:#5b5ef4}
   .sched-remind select{border:1px solid var(--line);border-radius:7px;padding:4px 8px;font-size:12.5px;font-family:inherit;outline:none;background:var(--card);color:var(--ink);cursor:pointer}
@@ -563,7 +569,7 @@
       </div>
     </div>
 
-    <div class="sched-vis-label">เลือกการมองเห็น<br><span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:11.5px">เลือกว่าจะบันทึกงานนี้เป็นของคุณคนเดียว หรือแชร์ให้ทีมเห็น</span></div>
+    <div class="sched-vis-label">เลือกการมองเห็น<br><span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:11.5px">เลือกว่าจะบันทึกงานนี้เป็นของคุณคนเดียว แชร์ทีม หรือเลือกคนที่ต้องการ</span></div>
     <div class="sched-vis-cards">
       <div class="sched-vis-card selected" id="sc_card_private" onclick="selectScheduleVis('private')">
         <div class="radio-dot"></div>
@@ -572,16 +578,32 @@
         </div>
         <div class="vc-title">ส่วนตัว</div>
         <div class="vc-sub">เห็นเฉพาะคุณเท่านั้น</div>
-        <div class="vc-detail">• งานจะปรากฏในตารางเวลาส่วนตัว<br>และ Notifications ของคุณ</div>
+        <div class="vc-detail">• ปรากฏใน Notifications<br>ของคุณเท่านั้น</div>
       </div>
       <div class="sched-vis-card" id="sc_card_shared" onclick="selectScheduleVis('shared')">
         <div class="radio-dot"></div>
         <div class="vc-icon">
           <svg class="ico" style="width:17px;height:17px" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
         </div>
-        <div class="vc-title">แชร์ให้ทีม</div>
-        <div class="vc-sub">ทุกคนในทีมสามารถเห็นได้</div>
-        <div class="vc-detail">• งานจะปรากฏในตารางทีม<br>และ Notifications ของทุกคน</div>
+        <div class="vc-title">ทั้งทีม</div>
+        <div class="vc-sub">ทุกคนในทีมเห็นได้</div>
+        <div class="vc-detail">• ปรากฏใน Notifications<br>ของทุกคนในทีม</div>
+      </div>
+      <div class="sched-vis-card" id="sc_card_specific" onclick="selectScheduleVis('specific')" style="grid-column:span 2">
+        <div class="radio-dot"></div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div class="vc-icon" style="margin-bottom:0;flex-shrink:0">
+            <svg class="ico" style="width:17px;height:17px" viewBox="0 0 24 24"><circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/><path d="M16 3.13a4 4 0 0 1 0 7.75M21 21v-2a4 4 0 0 0-3-3.87"/></svg>
+          </div>
+          <div>
+            <div class="vc-title">เลือกคนที่ต้องการ</div>
+            <div class="vc-sub">แชร์เฉพาะบางคนในทีม</div>
+          </div>
+        </div>
+        <div id="sc_specific_area" style="display:none" onclick="event.stopPropagation()">
+          <div style="font-size:12px;color:var(--ink2);margin-top:10px;padding-top:10px;border-top:1px solid var(--line2);margin-bottom:5px">เลือกสมาชิกที่ต้องการแชร์</div>
+          <div class="user-tag-picker" id="sc_user_tags"><span class="user-tag-empty">กำลังโหลด...</span></div>
+        </div>
       </div>
     </div>
 
@@ -611,23 +633,11 @@
     </div>
 
     <div id="loginMicrosoft" style="display:block">
-      <p style="font-size:12.5px;color:var(--muted);margin:8px 0 16px">ลงชื่อเข้าด้วย Microsoft Teams เพื่อแจ้งเตือนอัตโนมัติ</p>
-      <button class="btn primary" style="width:100%;justify-content:center;margin-bottom:14px;background:#0078d4;border-color:#0078d4" onclick="loginWithMicrosoftTeams()">
+      <p style="font-size:12.5px;color:var(--muted);margin:8px 0 16px">ลงชื่อเข้าด้วยบัญชี Microsoft Teams ขององค์กรเพื่อใช้งานและรับการแจ้งเตือนอัตโนมัติ</p>
+      <button class="btn primary" style="width:100%;justify-content:center;background:#0078d4;border-color:#0078d4" onclick="loginWithMicrosoftTeams()">
         <svg class="ico" style="width:18px;height:18px" viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" fill="currentColor"/><rect x="13" y="3" width="8" height="8" fill="currentColor"/><rect x="3" y="13" width="8" height="8" fill="currentColor"/><rect x="13" y="13" width="8" height="8" fill="currentColor"/></svg>
         ลงชื่อเข้าด้วย Microsoft Teams
       </button>
-      <div style="text-align:center;margin:14px 0;color:var(--muted);font-size:12px">หรือ</div>
-    </div>
-
-    <div id="loginManual" style="display:block">
-      <p style="font-size:12.5px;color:var(--muted);margin:8px 0 14px">กรอกข้อมูลเพื่อให้ระบบจดจำคุณและงานของคุณได้</p>
-      <div class="fld" style="margin-bottom:13px"><label>อีเมล *</label><input id="lg_email" placeholder="name@shareinvestor.com"></div>
-      <div class="fld" style="margin-bottom:13px"><label>ชื่อ-สกุล *</label><input id="lg_name" placeholder="เช่น Narisara P."></div>
-      <div class="grid2">
-        <div class="fld"><label>ชื่อเล่น / AE</label><input id="lg_ae" list="aeList" placeholder="เช่น Maprang"></div>
-        <div class="fld"><label>บทบาท</label><select id="lg_role"><option value="ae">AE (ดูแลลูกค้า)</option><option value="lead">Lead (หัวหน้าทีม)</option></select></div>
-      </div>
-      <button class="btn primary" style="width:100%;justify-content:center;margin-top:18px" onclick="doLogin()">เข้าสู่ระบบ</button>
     </div>
   </div></div>
 
@@ -736,17 +746,13 @@ function renderWho(){
   const adm=document.getElementById("nav-admin");
   if(adm)adm.style.display=(me.email||"").toLowerCase()===ADMIN_EMAIL?"flex":"none";
 }
-async function doLogin(){
-  const email=document.getElementById("lg_email").value.trim();
-  const name=document.getElementById("lg_name").value.trim();
-  if(!email||!name){alert("กรุณากรอกอีเมลและชื่อ-สกุล");return;}
-  me={email,name,ae:document.getElementById("lg_ae").value.trim(),role:document.getElementById("lg_role").value};
-  localStorage.setItem("salesbot_me",JSON.stringify(me));
-  await fetch(`${API}/api/profile`,{method:"POST",headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({user_email:me.email,full_name:me.name,ae_name:me.ae||null})});
-  document.getElementById("loginModal").classList.remove("open");
-  renderWho(); boot();
+async function _registerUser(email,name,ae){
+  if(!email||!email.toLowerCase().endsWith('@shareinvestor.com'))return;
+  const nickname=ae||name||email.split('@')[0];
+  fetch(`${API}/api/users`,{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({email:email.toLowerCase(),nickname,full_name:name||null})}).catch(()=>{});
 }
+
 function logout(){ localStorage.removeItem("salesbot_me"); me=null; document.getElementById("loginModal").classList.add("open"); }
 
 function loginWithMicrosoftTeams(){
@@ -992,7 +998,7 @@ function notifItems(){
     const d=daysFromToday(t.due_date);
     out.push({kind:t.source==="chat"?"chat":"task",id:t.id,done:t.done,
       title:t.note,sub:(t.account?`${t.account}${t.company_name?" · "+t.company_name:""}`:"งานทั่วไป")+(t.created_by?` · โดย ${t.created_by}`:""),
-      account:t.account,due:t.due_date,dueTime:t.due_time,days:d,is_shared:t.is_shared});
+      account:t.account,due:t.due_date,dueTime:t.due_time,days:d,is_shared:t.is_shared,shared_with:t.shared_with||null});
   });
   notifData.exp.forEach(e=>{
     out.push({kind:"expiring",done:false,
@@ -1012,7 +1018,12 @@ function passFilter(it,f){
   if(f==="week")return it.days!==null&&it.days>=0&&it.days<=7;
   if(f==="expiring")return it.kind==="expiring";
   if(f==="shared")return it.kind!=="expiring"&&it.is_shared;
-  if(f==="private")return it.kind!=="expiring"&&!it.is_shared;
+  if(f==="mine"){
+    if(it.kind==="expiring"||!it.shared_with)return false;
+    const myName=(me&&me.name||'').toLowerCase();
+    return it.shared_with.split(',').some(n=>n.trim().toLowerCase()===myName);
+  }
+  if(f==="private")return it.kind!=="expiring"&&!it.is_shared&&!it.shared_with;
   return true;
 }
 function renderNotifChips(){
@@ -1020,17 +1031,20 @@ function renderNotifChips(){
   const active=items.filter(it=>!it.done);
   const defs=[
     ["all","ทั้งหมด"],["today","วันนี้"],["week","7 วันข้างหน้า"],
-    ["expiring","สัญญาใกล้หมดอายุ"],["shared","แชร์ทีม"],["private","ส่วนตัว"],
+    ["expiring","สัญญาใกล้หมดอายุ"],["shared","แชร์ทีม"],["mine","มอบหมายฉัน"],["private","ส่วนตัว"],
     ["done","เสร็จแล้ว"],
   ];
+  const myName=(me&&me.name||'').toLowerCase();
   document.getElementById("notifChips").innerHTML=defs.map(([k,label])=>{
     let n=0;
     if(k==="done"){
       n=items.filter(it=>it.kind!=="expiring"&&it.done).length;
     } else if(k==="shared"){
       n=active.filter(it=>it.kind!=="expiring"&&it.is_shared).length;
+    } else if(k==="mine"){
+      n=active.filter(it=>it.kind!=="expiring"&&it.shared_with&&it.shared_with.split(',').some(x=>x.trim().toLowerCase()===myName)).length;
     } else if(k==="private"){
-      n=active.filter(it=>it.kind!=="expiring"&&!it.is_shared).length;
+      n=active.filter(it=>it.kind!=="expiring"&&!it.is_shared&&!it.shared_with).length;
     } else {
       n=active.filter(it=>passFilter(it,k)).length;
     }
@@ -1084,7 +1098,7 @@ function renderNotifList(){
     return `<div class="nrow ${it.done?'done':''}">
       <span class="dot ${urgent}"></span>
       <span class="nicon">${iconFor(it.kind)}</span>
-      <div class="body"><div class="ttl">${esc(it.title)}</div><div class="sub">${esc(it.sub)}</div>
+      <div class="body"><div class="ttl">${esc(it.title)}</div><div class="sub">${esc(it.sub)}${it.is_shared?'<span style="margin-left:6px;font-size:11px;color:#5b5ef4;font-weight:600">ทีม</span>':(it.shared_with?`<span style="margin-left:6px;font-size:11px;color:#0ea5e9;font-weight:600">แชร์กับ: ${esc(it.shared_with)}</span>`:'')}</div>
         <div class="when">${whenTxt}${it.product?` · <span class="badge b-mut">${esc(it.product)}</span>`:""}</div></div>
       <div class="right">${badgeFor(it)}${act}</div></div>`;
   }).join("");
@@ -1194,8 +1208,7 @@ function setRadarTab(t){radarTab=t;
   loadRadar();
 }
 async function loadRadar(){
-  const q=meAE()?`?ae=${encodeURIComponent(meAE())}`:"";
-  const d=await (await fetch(`${API}/api/radar/${radarTab}${q}`)).json();
+  const d=await (await fetch(`${API}/api/radar/${radarTab}`)).json();
   const t=document.getElementById("radarTable");
   const items=d.items||[];
   if(radarTab==="retain"){
@@ -1357,10 +1370,16 @@ function _parseSchedule(msg){
   const now=new Date();
   let date=null,time=null,note=msg;
 
-  // time: "14:00", "14.00", "14 น.", "บ่าย 2 โมง"
-  let tm=msg.match(/(\d{1,2})[:.:](\d{2})/);
-  if(tm){time=`${tm[1].padStart(2,'0')}:${tm[2]}`;note=note.replace(tm[0],'').trim();}
-  else{
+  // time: "เวลา 14:00", "14:00", "14.00", "18.00 น.", "บ่าย 2 โมง"
+  let tmFull=note.match(/เวลา\s*(\d{1,2})[:..](\d{2})\s*น?\.?/);
+  let tmBasic=note.match(/(\d{1,2})[:..](\d{2})\s*น?\.?/);
+  if(tmFull){
+    time=`${tmFull[1].padStart(2,'0')}:${tmFull[2]}`;
+    note=note.replace(tmFull[0],'').trim();
+  } else if(tmBasic){
+    time=`${tmBasic[1].padStart(2,'0')}:${tmBasic[2]}`;
+    note=note.replace(tmBasic[0],'').trim();
+  } else {
     let thai=msg.match(/บ่าย\s*(\d+)\s*โมง/i)||msg.match(/(\d+)\s*โมงเย็น/i)||msg.match(/(\d+)\s*โมงเช้า/i);
     if(thai){
       let h=parseInt(thai[1]);
@@ -1370,16 +1389,16 @@ function _parseSchedule(msg){
   }
 
   // date: "วันนี้","พรุ่งนี้","dd/mm","dd มิ.ย."
-  if(/วันนี้|today/i.test(msg)){date=now;note=note.replace(/วันนี้|today/gi,'').trim();}
-  else if(/พรุ่งนี้|tomorrow/i.test(msg)){date=new Date(now);date.setDate(date.getDate()+1);note=note.replace(/พรุ่งนี้|tomorrow/gi,'').trim();}
+  if(/วันนี้|today/i.test(note)){date=now;note=note.replace(/วันนี้|today/gi,'').trim();}
+  else if(/พรุ่งนี้|tomorrow/i.test(note)){date=new Date(now);date.setDate(date.getDate()+1);note=note.replace(/พรุ่งนี้|tomorrow/gi,'').trim();}
   else{
-    let dm=msg.match(/(\d{1,2})\s*(ม\.ค\.|ก\.พ\.|มี\.ค\.|เม\.ย\.|พ\.ค\.|มิ\.ย\.|ก\.ค\.|ส\.ค\.|ก\.ย\.|ต\.ค\.|พ\.ย\.|ธ\.ค\.)/);
+    let dm=note.match(/(\d{1,2})\s*(ม\.ค\.|ก\.พ\.|มี\.ค\.|เม\.ย\.|พ\.ค\.|มิ\.ย\.|ก\.ค\.|ส\.ค\.|ก\.ย\.|ต\.ค\.|พ\.ย\.|ธ\.ค\.)/);
     if(dm){
       const mo=THAI_MONTHS[dm[2]]||now.getMonth()+1;
       date=new Date(now.getFullYear(),mo-1,parseInt(dm[1]));
       note=note.replace(dm[0],'').trim();
     } else{
-      let nd=msg.match(/(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?/);
+      let nd=note.match(/(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?/);
       if(nd){
         const y=nd[3]?parseInt(nd[3])+(parseInt(nd[3])<100?2000:0):now.getFullYear();
         date=new Date(y,parseInt(nd[2])-1,parseInt(nd[1]));
@@ -1388,8 +1407,14 @@ function _parseSchedule(msg){
     }
   }
 
-  // clean up keywords from note
-  note=note.replace(SCHED_KEYWORDS,'').replace(/\s{2,}/g,' ').trim()||msg.trim();
+  // clean up: remove schedule keywords + leftover Thai filler words (เวลา, หน่อย, น.)
+  note=note
+    .replace(SCHED_KEYWORDS,'')
+    .replace(/เวลา/g,'')
+    .replace(/ให้หน่อย|หน่อย/g,'')
+    .replace(/น\.\s*/g,'')
+    .replace(/\s{2,}/g,' ')
+    .trim()||msg.replace(SCHED_KEYWORDS,'').replace(/เวลา|ให้หน่อย|หน่อย/g,'').trim()||msg.trim();
 
   let dateStr=null,timeStr=null;
   if(date){dateStr=date.toISOString().slice(0,10);}
@@ -1403,6 +1428,32 @@ function _parseSchedule(msg){
   }
   return{note,dateStr,timeStr,dtDisplay};
 }
+
+let _pickedUsers=new Set();
+
+async function _loadUserTags(){
+  const wrap=document.getElementById('sc_user_tags');
+  wrap.innerHTML='<span class="user-tag-empty">กำลังโหลด...</span>';
+  _pickedUsers=new Set();
+  try{
+    const users=await fetch(`${API}/api/users`).then(r=>r.json());
+    const myEmail=me&&me.email?me.email.toLowerCase():'';
+    if(!users.length){wrap.innerHTML='<span class="user-tag-empty">ยังไม่มีสมาชิกในระบบ — ให้ทีมลอง login เข้ามาก่อน</span>';return;}
+    wrap.innerHTML=users.map(u=>{
+      const isMe=u.email.toLowerCase()===myEmail;
+      const label=u.full_name&&u.nickname&&u.full_name!==u.nickname
+        ?`${u.full_name} - ${u.nickname}`:u.nickname;
+      return `<span class="user-tag${isMe?' me-tag':''}" title="${u.email}" onclick="_toggleUserTag(this,'${u.nickname}',${isMe})">${label}</span>`;
+    }).join('');
+  }catch(e){wrap.innerHTML='<span class="user-tag-empty">โหลดไม่สำเร็จ</span>';}
+}
+
+function _toggleUserTag(el,name,isMe){
+  if(isMe)return;
+  if(_pickedUsers.has(name)){_pickedUsers.delete(name);el.classList.remove('picked');}
+  else{_pickedUsers.add(name);el.classList.add('picked');}
+}
+
 
 function openScheduleModal(msg){
   const p=_parseSchedule(msg);
@@ -1418,17 +1469,27 @@ function selectScheduleVis(type){
   _schedData.vis=type;
   document.getElementById('sc_card_private').classList.toggle('selected',type==='private');
   document.getElementById('sc_card_shared').classList.toggle('selected',type==='shared');
+  document.getElementById('sc_card_specific').classList.toggle('selected',type==='specific');
+  const area=document.getElementById('sc_specific_area');
+  area.style.display=type==='specific'?'block':'none';
+  if(type==='specific') _loadUserTags();
 }
 
 async function saveScheduleTask(){
   const btn=document.getElementById('sc_save_btn');
   btn.disabled=true;btn.textContent='กำลังบันทึก…';
+  const sharedWith=_schedData.vis==='specific'?Array.from(_pickedUsers).join(','):null;
+  if(_schedData.vis==='specific'&&!sharedWith){
+    alert('กรุณาเลือกสมาชิกที่ต้องการแชร์');
+    btn.disabled=false;btn.textContent='บันทึก';return;
+  }
   const body={
     note:_schedData.note||_schedData.rawMsg||'งานจากแชท',
     due_date:_schedData.dateStr||null,
     due_time:_schedData.timeStr||null,
     created_by:me?me.name:null,
     is_shared:_schedData.vis==='shared',
+    shared_with:sharedWith||null,
     source:'chat',
   };
   try{
@@ -1436,7 +1497,8 @@ async function saveScheduleTask(){
     if(r.ok){
       document.getElementById('scheduleModal').classList.remove('open');
       loadNotifBadge();if(state.view==='dashboard')loadTasks();if(state.view==='notif')loadNotifPage();
-      addMsg(`บันทึก${_schedData.vis==='shared'?'(แชร์ทีม)':'(ส่วนตัว)'}: <b>${esc(body.note)}</b>${body.due_date?' — '+body.due_date+(body.due_time?' '+body.due_time:''):''}  ✓`,'bot');
+      const visLabel=_schedData.vis==='shared'?'(แชร์ทีม)':(_schedData.vis==='specific'?`(แชร์กับ: ${sharedWith})`:'(ส่วนตัว)');
+      addMsg(`บันทึก${visLabel}: <b>${esc(body.note)}</b>${body.due_date?' — '+body.due_date+(body.due_time?' '+body.due_time:''):''}  ✓`,'bot');
     }else{const e=await r.json().catch(()=>({}));alert('บันทึกไม่สำเร็จ: '+(e.detail||r.status));}
   }catch(err){alert('เกิดข้อผิดพลาด');}
   finally{btn.disabled=false;btn.textContent='บันทึก';}
@@ -1592,17 +1654,19 @@ function boot(){
     const email = params.get("email");
     const name = params.get("name");
     if(email && name){
-      me = {email, name, ae: name.split(" ")[0], role: "ae"};
+      me = {email, name, ae: name.split(" ")[0], role: "lead"};
       localStorage.setItem("salesbot_me", JSON.stringify(me));
-      // Remove query params from URL
+      _registerUser(email, name, name.split(' ')[0]);
       window.history.replaceState({}, document.title, window.location.pathname);
     }
   }
 
   AES = await (await fetch(`${API}/api/aes`)).json();
   document.getElementById("aeList").innerHTML = AES.map(a=>`<option value="${a}">`).join("");
-  if(me){ renderWho(); boot(); }
-  else { document.getElementById("loginModal").classList.add("open"); }
+  if(me){
+    _registerUser(me.email, me.name, me.nickname||me.ae);  // register existing session silently
+    renderWho(); boot();
+  } else { document.getElementById("loginModal").classList.add("open"); }
 })();
 </script>
 </body>
