@@ -31,8 +31,11 @@ Live: https://salesbot.ohmai.me (VPS 187.127.218.42 — ดู `deploy/DEPLOY.md
      `sales_opportunities` (retain/winback/upsell), `list_team`
    - เขียน: `add_followup`, `manage_followup`, `remember_about_customer`
    - คำตอบลิงก์รหัสลูกค้า `[ACE](customer:ACE)` → คลิกเปิดหน้าลูกค้า
+   - เปิดหน้าใหม่แล้วคุยต่อจากเดิม (`/api/chat/history`) · แชทว่างมีคำถามแนะนำให้กด
 3. **Data** — ตารางลูกค้าเรียงตามความด่วน (ใกล้หมด → เพิ่งหลุด → ใช้งานอยู่ → อื่น ๆ), กรองตาม stage, Export CSV,
    ฟอร์มแก้ไข + งานติดตาม + ความจำทีมต่อลูกค้า
+   · ปุ่ม **ต่อสัญญาแล้ว** (ต่อจากวันหมดเดิมตามระยะสัญญา, ถ้าหลุดเกิน 90 วันเริ่มวันนี้) และ **ไม่ต่อ** (ตั้ง Cancelled + เหตุผล)
+     ทั้งสองปุ่มบันทึกลงความจำทีมของลูกค้ารายนั้น
 4. **เรดาร์โอกาสขาย** — เสี่ยงหลุด / ดึงกลับ / อัปเซล พร้อมร่างข้อความ
 5. **Notifications** — งานติดตาม + สัญญาใกล้หมด, ตัวกรอง
 
@@ -50,7 +53,6 @@ backend/
   chat_tools.py      นิยาม tool + executor
   notifications.py   สัญญาใกล้หมด (กระดิ่ง + หน้า Notifications)
   memory_manager.py  ความจำผู้ใช้ / ความจำทีมต่อลูกค้า
-  improve.py         log ปัญหาแชท + บทเรียน (หน้า Admin)
   import_data.py     Excel → salesbot.db (upsert)
 frontend/index.html  SPA · frontend/static/ glass.css + bg.jpg
 tests/               ความสอดคล้องของตัวเลข + login
@@ -75,3 +77,4 @@ Import จาก `Data/` (ไม่ขึ้น git) — `IR-Agreement-Status 20
 ## หมายเหตุ
 - เกณฑ์ "ใกล้หมด": `EXPIRING_THRESHOLD_DAYS` (default 60)
 - SQLite เปิด WAL + connection ต่อ thread (อย่ากลับไปใช้ StaticPool — query ชนกันจน "malformed")
+- Backup: `deploy/backup.sh` ทุกคืน 02:30 (cron ที่ deploy.sh ติดตั้ง) เก็บ 14 วันที่ `/root/salesbot-backups` บน VPS

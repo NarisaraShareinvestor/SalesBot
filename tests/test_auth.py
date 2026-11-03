@@ -17,7 +17,7 @@ import auth  # noqa: E402
 import main  # noqa: E402
 
 DATA_ROUTES = ["/api/dashboard", "/api/customers", "/api/customers/expiring", "/api/notifications",
-               "/api/followups", "/api/aes", "/api/users", "/api/radar/retain", "/api/export/customers",
+               "/api/followups", "/api/aes", "/api/radar/retain", "/api/export/customers",
                "/api/customers/PLE", "/api/briefing"]
 
 
@@ -37,7 +37,7 @@ def test_data_routes_need_a_session():
 def test_removed_routes_are_gone():
     c = TestClient(main.app)
     assert _login(c).status_code == 200
-    for path in ("/api/ae-emails", "/auth/microsoft/login", "/api/auth/config"):
+    for path in ("/api/ae-emails", "/auth/microsoft/login", "/api/auth/config", "/api/users", "/api/admin/check"):
         assert c.get(path).status_code in (404, 405), path
     assert c.post("/api/notifications/send-email", json={}).status_code in (404, 405)
 

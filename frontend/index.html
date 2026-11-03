@@ -119,6 +119,8 @@
   .msg .time{font-size:10px;color:var(--faint);margin-top:4px}
   .msg .bubble .md-h{display:inline-block;font-weight:700;margin-top:9px;font-size:13.5px}
   .msg .bubble strong{font-weight:700}
+  .suggest{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;white-space:normal}
+  .suggest .lnk{font-size:12.5px;text-align:left;border-color:rgba(31,38,48,.16)}
   .cust-link{font-weight:600;text-decoration:underline;text-underline-offset:3px;cursor:pointer;color:inherit}
   .chat-input{padding:14px 18px;border-top:1px solid var(--line2)}
   .chat-input form{display:flex;gap:10px}
@@ -308,7 +310,6 @@
       <a id="nav-data" onclick="setView('data')"><svg class="ico" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.7 4 3 9 3s9-1.3 9-3V5"/><path d="M3 12c0 1.7 4 3 9 3s9-1.3 9-3"/></svg>Data</a>
       <a id="nav-radar" onclick="setView('radar')"><svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>เรดาร์โอกาสขาย</a>
       <a id="nav-notif" onclick="setView('notif')" style="justify-content:space-between"><span style="display:flex;align-items:center;gap:11px"><svg class="ico" viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>Notifications</span><span class="navcount" id="navNotifCount"></span></a>
-      <a id="nav-admin" onclick="setView('admin')" style="display:none"><svg class="ico" viewBox="0 0 24 24"><path d="M12 2 4 6v6c0 5 3.5 8 8 10 4.5-2 8-5 8-10V6z"/><path d="M9 12l2 2 4-4"/></svg>Admin · ปัญหา</a>
     </nav>
     <div class="who">
       <label>Logged in as</label>
@@ -461,41 +462,6 @@
           <div class="pager"><span id="radarInfo"></span></div>
         </div>
       </div>
-
-      <!-- ADMIN (เฉพาะวิศวกร AI) -->
-      <div id="view-admin" style="display:none">
-        <!-- token gate -->
-        <div id="adminGate" class="card" style="max-width:440px;margin:30px auto;padding:24px 26px;display:none">
-          <h3 style="font-size:16px;font-weight:600;margin-bottom:6px">เข้าถึงเฉพาะวิศวกร AI</h3>
-          <p style="font-size:12.5px;color:var(--muted);margin-bottom:16px">กรอก Admin Token เพื่อดูรายงานปัญหาและระบบปรับปรุงตัวเอง</p>
-          <input id="adminToken" type="password" placeholder="Admin Token" style="width:100%;border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:13px;font-family:inherit;outline:none">
-          <div id="adminGateMsg" style="font-size:12px;color:var(--bad);min-height:16px;margin-top:8px"></div>
-          <button class="btn primary" style="width:100%;justify-content:center;margin-top:6px" onclick="adminLogin()">เข้าสู่ระบบ</button>
-        </div>
-
-        <!-- panel -->
-        <div id="adminPanel" style="display:none">
-          <div class="stats" id="adminStats" style="grid-template-columns:repeat(5,1fr);margin-bottom:18px"></div>
-
-          <div class="card" style="margin-bottom:18px">
-            <div class="card-head">
-              <div><h3>รายงานปรับปรุงระบบ (ทุกเที่ยงคืน)</h3><div class="sub">ระบบวิเคราะห์ปัญหา 24 ชม. + เสนอสิ่งที่ต้องแก้</div></div>
-              <button class="btn" onclick="adminRunNightly()"><svg class="ico" viewBox="0 0 24 24" style="width:14px;height:14px"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.5 9a9 9 0 0 1 14.8-3.4L23 10M1 14l4.7 4.4A9 9 0 0 0 20.5 15"/></svg>รันวิเคราะห์เดี๋ยวนี้</button>
-            </div>
-            <div id="adminReports" style="padding:8px 20px 16px"></div>
-          </div>
-
-          <div class="card" style="margin-bottom:18px">
-            <div class="card-head"><div><h3>บทเรียนที่ระบบเสนอ (Learned Guidance)</h3><div class="sub">อนุมัติเพื่อให้บอทใช้ — ปิดไว้ถ้ายังไม่มั่นใจ</div></div></div>
-            <div id="adminGuidance" style="padding:8px 20px 16px"></div>
-          </div>
-
-          <div class="card">
-            <div class="card-head"><div><h3>เคสที่บอทตอบไม่ได้</h3><div class="sub">คำถามผู้ใช้ที่ระบบ flag ว่าน่าจะมีปัญหา</div></div></div>
-            <div id="adminIssues" style="padding:8px 20px 16px"></div>
-          </div>
-        </div>
-      </div>
     </div>
   </div>
 
@@ -590,7 +556,13 @@
 
   <!-- Add/Edit modal -->
   <div class="modal" id="modal"><div class="box">
-    <h3 id="modalTitle">เพิ่มลูกค้าใหม่</h3>
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:18px">
+      <h3 id="modalTitle" style="margin:0">เพิ่มลูกค้าใหม่</h3>
+      <div id="lcActions" style="display:none;gap:8px;flex-wrap:wrap">
+        <button class="btn primary" onclick="renewCustomer()" title="ต่อจากวันหมดเดิม ตามระยะสัญญา">ต่อสัญญาแล้ว</button>
+        <button class="btn" onclick="markLost()" title="ตั้งเป็นยกเลิก พร้อมเหตุผล">ไม่ต่อ</button>
+      </div>
+    </div>
     <div class="grid2">
       <div class="fld"><label>Account *</label><input id="f_account"></div>
       <div class="fld"><label>มอบหมายให้ (AE-IR)</label><input id="f_ae_ir" list="aeList" placeholder="พิมพ์หรือเลือก"><datalist id="aeList"></datalist></div>
@@ -700,9 +672,6 @@ function renderWho(){
   document.getElementById("whoAv").textContent=(me.name||me.email||"?")[0].toUpperCase();
   document.getElementById("whoName").textContent=me.name||me.email;
   document.getElementById("whoRole").textContent=(me.role==="lead"?"Lead":"AE")+(me.ae?" · "+me.ae:"");
-  // เมนู Admin โชว์เฉพาะวิศวกร AI
-  const adm=document.getElementById("nav-admin");
-  if(adm)adm.style.display="flex";
 }
 
 function showLogin(){ document.getElementById("loginModal").classList.add("open"); setTimeout(()=>document.getElementById("lg_user").focus(),50); }
@@ -730,11 +699,10 @@ async function startSession(u){
 
 /* ── view switching ── */
 const SUBS={dashboard:"ภาพรวมทีมและการมอบหมายงาน",chat:"สอบถามข้อมูลลูกค้า / สัญญา / Follow-up",
-  data:"ข้อมูลลูกค้า / สัญญา / IR Contact",notif:"งานที่กำลังจะถึง / สัญญาใกล้หมดอายุ / Follow-up",
-  admin:"รายงานปัญหา + ระบบปรับปรุงตัวเอง (เฉพาะวิศวกร AI)"};
-const TITLES={dashboard:"Dashboard",chat:"Chat",data:"Data",notif:"Notifications",radar:"เรดาร์โอกาสขาย",admin:"Admin · ระบบปรับปรุงตัวเอง"};
+  data:"ข้อมูลลูกค้า / สัญญา / IR Contact",notif:"งานที่กำลังจะถึง / สัญญาใกล้หมดอายุ / Follow-up"};
+const TITLES={dashboard:"Dashboard",chat:"Chat",data:"Data",notif:"Notifications",radar:"เรดาร์โอกาสขาย"};
 SUBS.radar="โอกาสรักษา / ดึงกลับ / อัปเซล — จากข้อมูลจริง";
-const VIEWS=["dashboard","chat","data","notif","radar","admin"];
+const VIEWS=["dashboard","chat","data","notif","radar"];
 function toggleNav(){document.body.classList.toggle("nav-open");}
 function closeNav(){document.body.classList.remove("nav-open");}
 function setView(v){
@@ -750,7 +718,6 @@ function setView(v){
   if(v==="data")reload();
   if(v==="notif")loadNotifPage();
   if(v==="radar")loadRadar();
-  if(v==="admin")openAdmin();
 }
 
 /* ── Dashboard ── */
@@ -1213,99 +1180,6 @@ function copyDraft(){
   });
 }
 
-/* ── Admin · ระบบปรับปรุงตัวเอง ── */
-function adminTok(){return localStorage.getItem("salesbot_admin_token")||"";}
-function adminHeaders(){return {"Content-Type":"application/json","X-Admin-Token":adminTok()};}
-async function openAdmin(){
-  const gate=document.getElementById("adminGate"), panel=document.getElementById("adminPanel");
-  if(!adminTok()){gate.style.display="block";panel.style.display="none";return;}
-  // มี token แล้ว — เช็คความถูกต้อง
-  const r=await fetch(`${API}/api/admin/check`,{headers:adminHeaders()});
-  if(!r.ok){localStorage.removeItem("salesbot_admin_token");gate.style.display="block";panel.style.display="none";
-    document.getElementById("adminGateMsg").textContent="Token หมดอายุหรือไม่ถูกต้อง กรอกใหม่";return;}
-  gate.style.display="none";panel.style.display="block";
-  loadAdminAll();
-}
-async function adminLogin(){
-  const tok=document.getElementById("adminToken").value.trim();
-  if(!tok)return;
-  const r=await fetch(`${API}/api/admin/check`,{headers:{"X-Admin-Token":tok}});
-  if(r.ok){localStorage.setItem("salesbot_admin_token",tok);document.getElementById("adminToken").value="";
-    document.getElementById("adminGateMsg").textContent="";openAdmin();}
-  else{document.getElementById("adminGateMsg").textContent="Token ไม่ถูกต้อง";}
-}
-async function loadAdminAll(){loadAdminStats();loadAdminReports();loadAdminGuidance();loadAdminIssues();}
-async function loadAdminStats(){
-  const d=await (await fetch(`${API}/api/admin/overview`,{headers:adminHeaders()})).json();
-  const cards=[
-    {lab:"บทสนทนาทั้งหมด",val:d.total_chats,dot:""},
-    {lab:"เคสมีปัญหา",val:d.flagged,dot:"dot-bad"},
-    {lab:"guidance รออนุมัติ",val:d.pending_guidance,dot:"dot-warn"},
-    {lab:"guidance ใช้งาน",val:d.active_guidance,dot:"dot-ok"},
-    {lab:"รายงานล่าสุด",val:d.last_report_date||"—",dot:""},
-  ];
-  document.getElementById("adminStats").innerHTML=cards.map(c=>
-    `<div class="stat"><div class="lab">${c.dot?`<span class="dot ${c.dot}"></span>`:""}${c.lab}</div><div class="val" style="font-size:${typeof c.val==='string'&&c.val.length>6?'15px':'23px'}">${esc(String(c.val))}</div></div>`).join("");
-}
-async function loadAdminReports(){
-  const d=await (await fetch(`${API}/api/admin/reports`,{headers:adminHeaders()})).json();
-  const el=document.getElementById("adminReports");
-  if(!d.length){el.innerHTML='<div class="mut" style="font-size:13px;padding:6px 0">ยังไม่มีรายงาน — กด "รันวิเคราะห์เดี๋ยวนี้" เพื่อสร้าง</div>';return;}
-  el.innerHTML=d.map(function(r){
-    var cats=(r.categories||[]).map(function(c){return '<span class="badge b-mut" style="margin:2px 4px 2px 0">'+esc(c.category||'')+' ('+(c.count||0)+')</span>';}).join("");
-    return '<div style="padding:13px 0;border-bottom:1px solid var(--line2)">'
-      +'<div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:13.5px">'+esc(r.report_date)+'</b>'
-      +'<span class="mut" style="font-size:12px">'+r.total_chats+' บทสนทนา · flag '+r.flagged_count+(r.emailed?' · ส่งเมลแล้ว':'')+'</span></div>'
-      +'<div style="font-size:13px;color:var(--ink2);margin-top:7px;line-height:1.6">'+renderMd(r.summary||'-')+'</div>'
-      +(cats?'<div style="margin-top:8px">'+cats+'</div>':'')
-      +(r.engineer_actions?'<div style="margin-top:9px;font-size:12.5px;background:#f7f8fa;border-radius:8px;padding:10px 12px"><b style="font-size:11.5px;color:var(--muted)">สิ่งที่วิศวกรต้องแก้</b><div style="margin-top:4px;line-height:1.65">'+renderMd(r.engineer_actions)+'</div></div>':'')
-      +'</div>';
-  }).join("");
-}
-async function loadAdminGuidance(){
-  const d=await (await fetch(`${API}/api/admin/guidance`,{headers:adminHeaders()})).json();
-  const el=document.getElementById("adminGuidance");
-  if(!d.length){el.innerHTML='<div class="mut" style="font-size:13px;padding:6px 0">ยังไม่มี guidance</div>';return;}
-  el.innerHTML=d.map(function(g){
-    var badge=g.is_active?'<span class="badge b-ok">ใช้งาน</span>':'<span class="badge b-warn">รออนุมัติ</span>';
-    var src=g.source==='manual'?'เพิ่มเอง':'ระบบเสนอ';
-    var toggle=g.is_active
-      ?'<button class="lnk" onclick="toggleGuidance('+g.id+',false)">ปิด</button>'
-      :'<button class="btn primary" style="padding:5px 11px" onclick="toggleGuidance('+g.id+',true)">อนุมัติ</button>';
-    return '<div class="fu"><div class="body">'+esc(g.text)+'<div class="meta">'+src+' · '+(g.created_at||'')+' '+badge+'</div></div>'
-      +'<div style="display:flex;gap:6px;align-items:center">'+toggle+'<span class="del" onclick="delGuidance('+g.id+')">×</span></div></div>';
-  }).join("");
-}
-async function toggleGuidance(id,active){
-  await fetch(`${API}/api/admin/guidance/${id}`,{method:"PUT",headers:adminHeaders(),body:JSON.stringify({is_active:active})});
-  loadAdminGuidance();loadAdminStats();
-}
-async function delGuidance(id){
-  await fetch(`${API}/api/admin/guidance/${id}`,{method:"DELETE",headers:adminHeaders()});
-  loadAdminGuidance();loadAdminStats();
-}
-async function loadAdminIssues(){
-  const d=await (await fetch(`${API}/api/admin/issues?flagged_only=true&limit=100`,{headers:adminHeaders()})).json();
-  const el=document.getElementById("adminIssues");
-  if(!d.length){el.innerHTML='<div class="mut" style="font-size:13px;padding:6px 0">ยังไม่มีเคสที่มีปัญหา 🎉</div>';return;}
-  el.innerHTML=d.map(function(it){
-    return '<div style="padding:11px 0;border-bottom:1px solid var(--line2)">'
-      +'<div style="font-size:13.5px;font-weight:600">Q: '+esc(it.question)+'</div>'
-      +'<div style="font-size:12.5px;color:var(--muted);margin-top:3px">A: '+esc((it.answer||'').slice(0,200))+'</div>'
-      +'<div class="meta" style="font-size:11px;color:var(--faint);margin-top:4px">'+esc(it.user||'')+(it.ae?' · '+esc(it.ae):'')+' · '+(it.created_at||'')+' · <span class="d-bad">'+esc(it.flag_reason||'')+'</span></div>'
-      +'</div>';
-  }).join("");
-}
-async function adminRunNightly(){
-  const el=document.getElementById("adminReports");
-  el.insertAdjacentHTML("afterbegin",'<div id="runMsg" class="mut" style="font-size:12.5px;padding:4px 0">กำลังวิเคราะห์…</div>');
-  try{
-    const r=await fetch(`${API}/api/admin/run-nightly?force=true`,{method:"POST",headers:adminHeaders()});
-    const d=await r.json();
-    loadAdminAll();
-  }catch(e){const m=document.getElementById("runMsg");if(m)m.textContent="ผิดพลาด";}
-}
-
 /* ── Schedule Modal ── */
 let _schedData={};
 const SCHED_KEYWORDS=/ลงตารางเวลา|ลงตาราง|นัดพบ|นัดหมาย|follow.?up|ฟอลโลอัพ|บันทึกนัด|จองเวลา|ลงนัด|นัด[ลูก]|reminder|เตือน.*นัด/i;
@@ -1443,7 +1317,7 @@ async function sendChat(e){
 const FIELDS=["account","ae_ir","company_name_en","company_name_th","contract_type","contract_status","effective_date","expiry_date","monthly_payment","latest_value","market","sector","industry","grade","url","address_th","address_en","zip_code","ir_team","contact_email","cc_emails","contract_status_text"];
 const NUM_FIELDS=new Set(["monthly_payment","latest_value"]);
 const EXTRA_FIELDS=[["set 100","fx_set_100"],["set esg","fx_set_esg"],["ae (recommend)","fx_ae_recommend"],["product pryce esg","fx_product_pryce_esg"]];
-function openModal(){state.editing=null;document.getElementById("modalTitle").textContent="เพิ่มลูกค้าใหม่";
+function openModal(){state.editing=null;document.getElementById("lcActions").style.display="none";document.getElementById("modalTitle").textContent="เพิ่มลูกค้าใหม่";
   FIELDS.forEach(f=>document.getElementById("f_"+f).value="");
   EXTRA_FIELDS.forEach(([,id])=>{const el=document.getElementById(id);if(el)el.value="";});
   if(meAE())document.getElementById("f_ae_ir").value=meAE();
@@ -1461,6 +1335,8 @@ async function deleteCustomer(acct){
 async function editCustomer(acct){
   const c=await (await fetch(`${API}/api/customers/${encodeURIComponent(acct)}`)).json();
   state.editing=acct;document.getElementById("modalTitle").textContent="แก้ไข: "+acct;
+  document.getElementById("lcActions").style.display="flex";
+  state.period=c.period_months;
   FIELDS.forEach(f=>document.getElementById("f_"+f).value=c[f]??"");
   const ex=c.extra||{};
   EXTRA_FIELDS.forEach(([key,id])=>{const el=document.getElementById(id);if(el)el.value=ex[key]??"";});
@@ -1494,7 +1370,7 @@ async function loadMemories(acct){
   const el=document.getElementById("memList");
   if(!d.length){el.innerHTML='<div class="mut" style="font-size:12.5px;padding:4px 0">ยังไม่มีความจำ — AI จะจำให้อัตโนมัติเมื่อคุยในแชท หรือเพิ่มเองด้านล่าง</div>';return;}
   el.innerHTML=d.map(function(m){
-    var meta=(m.source==='chat'?'จากแชท':'เพิ่มเอง')+(m.created_by?' · '+esc(m.created_by):'')+(m.created_at?' · '+m.created_at:'');
+    var meta=({chat:'จากแชท',renew:'ปุ่มต่อสัญญา',lost:'ปุ่มไม่ต่อ'}[m.source]||'เพิ่มเอง')+(m.created_by?' · '+esc(m.created_by):'')+(m.created_at?' · '+m.created_at:'');
     return '<div class="fu"><div class="body">'+esc(m.fact)+'<div class="meta">'+meta+'</div></div>'
       +'<span class="del" onclick="delMemory('+m.id+',\''+esc(acct)+'\')">×</span></div>';
   }).join("");
@@ -1507,6 +1383,26 @@ async function addMemory(){
 }
 async function delMemory(id,acct){await fetch(`${API}/api/memories/${id}`,{method:"DELETE"});loadMemories(acct);}
 function closeModal(){document.getElementById("modal").classList.remove("open");}
+// one-click lifecycle updates — they also write a line into the team memory for this customer
+async function _afterLifecycle(r){
+  const d=await r.json().catch(()=>({}));
+  if(!r.ok){alert(d.detail||"บันทึกไม่สำเร็จ");return;}
+  await editCustomer(state.editing);
+  if(state.view==="data")reload(); else if(state.view==="dashboard")loadDashboard();
+  loadNotifBadge();
+}
+async function renewCustomer(){
+  const cur=state.period||12;
+  const m=prompt(`ต่อสัญญากี่เดือน? (เริ่มต่อจากวันหมดเดิม)`,String(cur)); if(m===null)return;
+  const months=parseInt(m,10); if(!(months>=1&&months<=60)){alert("ใส่จำนวนเดือน 1–60");return;}
+  _afterLifecycle(await fetch(`${API}/api/customers/${encodeURIComponent(state.editing)}/renew`,
+    {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({months})}));
+}
+async function markLost(){
+  const reason=(prompt("เหตุผลที่ไม่ต่อ (ทีมจะเห็นตอนพยายามดึงกลับ)")||"").trim(); if(!reason)return;
+  _afterLifecycle(await fetch(`${API}/api/customers/${encodeURIComponent(state.editing)}/lost`,
+    {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({reason})}));
+}
 async function saveCustomer(){
   const body={};
   FIELDS.forEach(f=>{const v=document.getElementById("f_"+f).value.trim();if(v!=="")body[f]=NUM_FIELDS.has(f)?Number(v):v;});
@@ -1542,11 +1438,17 @@ async function delFu(id,acct){await fetch(`${API}/api/followups/${id}`,{method:"
 
 /* ── init ── */
 let _greeted=false;
+const SUGGEST=["ภาพรวมทีม 90 วันข้างหน้าจะหลุดเท่าไร","ควรโทรหาใครก่อนสัปดาห์นี้","ลูกค้าที่สถานะในระบบต้องอัปเดตมีใครบ้าง","ลูกค้าที่หลุดล่าสุดน่าดึงกลับรายไหน"];
+function askSuggested(q){ const i=document.getElementById("chatInput"); i.value=q; i.form.requestSubmit(); }
+async function loadChatHistory(){
+  // pick up where the conversation left off; greet + suggest only when there's nothing yet
+  const h=await fetch(`${API}/api/chat/history`).then(r=>r.ok?r.json():[]).catch(()=>[]);
+  if(h.length){ h.forEach(m=>addMsg(m.role==="user"?esc(m.message):renderMd(m.message),m.role==="user"?"user":"bot")); return; }
+  addMsg(`สวัสดีค่ะ SalesBot พร้อมช่วยแล้วค่ะ ถามเรื่องลูกค้า สัญญา หรือสั่ง "ลงตารางพรุ่งนี้ 10:00 โทรหา ACE" ได้เลย`+
+    `<div class="suggest">${SUGGEST.map(q=>`<button class="lnk" onclick="askSuggested('${esc(q)}')">${esc(q)}</button>`).join("")}</div>`,"bot");
+}
 function boot(){
-  if(!_greeted){
-    addMsg(`สวัสดีค่ะ${me.name?" คุณ"+esc(me.name):""} SalesBot พร้อมช่วยแล้วค่ะ ลองถามได้เลย เช่น "ลูกค้า ACE หมดสัญญาเมื่อไหร่" หรือสั่ง "ลงตารางวันนี้ 14:00 โทรหา ACE"`,"bot");
-    _greeted=true;
-  }
+  if(!_greeted){ loadChatHistory(); _greeted=true; }
   renderWho();
   setView("dashboard");
   loadNotifBadge();

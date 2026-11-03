@@ -35,7 +35,7 @@ From your Mac:
 ```bash
 cd ~/Projects/SalesBot
 K="-i $HOME/.ssh/line_inbox_deploy"; H=root@187.127.218.42:/opt/salesbot/data
-# fill the real values (OpenAI, LOGIN_PASSWORD, ADMIN_TOKEN) — see .env.production.example
+# fill the real values (OpenAI, LOGIN_PASSWORD) — see .env.production.example
 scp $K .env                    $H/.env
 scp $K backend/salesbot.db     $H/salesbot.db
 ```
@@ -72,3 +72,8 @@ Back up the DB before a schema change: `cp data/salesbot.db /root/salesbot.db.ba
 - Container is capped at 512 MB (`mem_limit`) — the box is shared and RAM is tight.
 - Re-import from fresh Excel: scp the two `.xlsx` into `Data/` and run
   `docker compose run --rm salesbot python import_data.py`.
+
+## Backups
+`deploy.sh` installs `/etc/cron.d/salesbot-backup` → `deploy/backup.sh` every night 02:30 Bangkok (19:30 UTC),
+14 days kept in `/root/salesbot-backups` (log: `/var/log/salesbot-backup.log`).
+Restore: `gunzip -c /root/salesbot-backups/salesbot-<date>.db.gz > /opt/salesbot/data/salesbot.db && docker compose restart salesbot`.

@@ -48,6 +48,14 @@ if ! nginx -t; then
 fi
 systemctl reload nginx
 
+# 5) nightly DB backup at 02:30 Bangkok time (19:30 UTC), 14 days kept in /root/salesbot-backups
+chmod +x deploy/backup.sh
+CRON=/etc/cron.d/salesbot-backup
+LINE="30 19 * * * root $APP_DIR/deploy/backup.sh >> /var/log/salesbot-backup.log 2>&1"
+if [ "$(cat "$CRON" 2>/dev/null)" != "$LINE" ]; then
+  echo "$LINE" > "$CRON"; chmod 644 "$CRON"; echo "==> backup cron installed ($CRON)"
+fi
+
 echo "==> health check"
 sleep 3
 curl -fsS -o /dev/null -w "local backend: HTTP %{http_code}\n" http://127.0.0.1:8001/ || true

@@ -8,7 +8,7 @@ services:
     container_name: salesbot
     restart: always
     env_file:
-      - ./data/.env            # OPENAI_*, LOGIN_USER/LOGIN_PASSWORD, ADMIN_TOKEN, EXPIRING_THRESHOLD_DAYS
+      - ./data/.env            # OPENAI_*, LOGIN_USER/LOGIN_PASSWORD, EXPIRING_THRESHOLD_DAYS
     environment:
       DATABASE_URL: sqlite:////data/salesbot.db
     volumes:
