@@ -36,7 +36,18 @@ EOF
     || { rm -f "$VHOST"; nginx -t && systemctl reload nginx; echo "!! certbot failed"; exit 1; }
 fi
 
-# 4) real vhost — roll back if nginx rejects it so the other sites never go down
+# 4) basic-auth password (first time only) — shared team login until the APIs check sessions
+HTPASS="/etc/nginx/salesbot.htpasswd"
+if [ ! -f "$HTPASS" ]; then
+  PW="$(openssl rand -base64 24 | tr -d '/+=' | cut -c1-16)"
+  printf 'salesbot:%s\n' "$(openssl passwd -apr1 "$PW")" > "$HTPASS"
+  chown root:www-data "$HTPASS"; chmod 640 "$HTPASS"
+  printf 'user: salesbot\npassword: %s\n' "$PW" > /root/salesbot-basic-auth.txt
+  chmod 600 /root/salesbot-basic-auth.txt
+  echo "==> basic auth created — credentials in /root/salesbot-basic-auth.txt"
+fi
+
+# 5) real vhost — roll back if nginx rejects it so the other sites never go down
 echo "==> installing vhost"
 BAK="/root/zz-${DOMAIN}.conf.bak"
 rm -f "$BAK"; [ -f "$VHOST" ] && cp "$VHOST" "$BAK"
