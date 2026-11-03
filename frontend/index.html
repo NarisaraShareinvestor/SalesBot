@@ -639,6 +639,14 @@
         ลงชื่อเข้าด้วย Microsoft Teams
       </button>
     </div>
+
+    <div id="loginManual" style="display:none">
+      <p style="font-size:12.5px;color:var(--muted);margin:8px 0 14px">กรอกอีเมลบริษัทและชื่อ เพื่อให้ระบบจดจำคุณและงานของคุณ</p>
+      <div class="fld" style="margin-bottom:13px"><label>อีเมล *</label><input id="lg_email" placeholder="name@shareinvestor.com"></div>
+      <div class="fld" style="margin-bottom:13px"><label>ชื่อ-สกุล *</label><input id="lg_name" placeholder="เช่น Narisara P."></div>
+      <div class="fld"><label>ชื่อเล่น / AE</label><input id="lg_ae" list="aeList" placeholder="เช่น Maprang"></div>
+      <button class="btn primary" style="width:100%;justify-content:center;margin-top:18px" onclick="doLogin()">เข้าสู่ระบบ</button>
+    </div>
   </div></div>
 
   <!-- Add/Edit modal -->
@@ -754,6 +762,19 @@ async function _registerUser(email,name,ae){
 }
 
 function logout(){ localStorage.removeItem("salesbot_me"); me=null; document.getElementById("loginModal").classList.add("open"); }
+
+// ใช้ตอนยังไม่ได้ตั้งค่า Azure — ทุกคนเป็น lead เหมือนตอน login ผ่าน Teams
+function doLogin(){
+  const email=document.getElementById("lg_email").value.trim().toLowerCase();
+  const name=document.getElementById("lg_name").value.trim();
+  if(!email.endsWith("@shareinvestor.com")||!name){alert("กรุณากรอกอีเมล @shareinvestor.com และชื่อ-สกุล");return;}
+  const ae=document.getElementById("lg_ae").value.trim()||name.split(" ")[0];
+  me={email,name,ae,role:"lead"};
+  localStorage.setItem("salesbot_me",JSON.stringify(me));
+  _registerUser(email,name,ae);
+  document.getElementById("loginModal").classList.remove("open");
+  boot();
+}
 
 function loginWithMicrosoftTeams(){
   // Redirect to backend OAuth endpoint which will redirect to Azure AD
@@ -1666,7 +1687,12 @@ function boot(){
   if(me){
     _registerUser(me.email, me.name, me.nickname||me.ae);  // register existing session silently
     renderWho(); boot();
-  } else { document.getElementById("loginModal").classList.add("open"); }
+  } else {
+    const cfg = await fetch(`${API}/api/auth/config`).then(r=>r.json()).catch(()=>({teams:true}));
+    document.getElementById("loginMicrosoft").style.display = cfg.teams ? "block" : "none";
+    document.getElementById("loginManual").style.display = cfg.teams ? "none" : "block";
+    document.getElementById("loginModal").classList.add("open");
+  }
 })();
 </script>
 </body>

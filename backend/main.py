@@ -687,6 +687,12 @@ def set_profile(body: ProfileIn, db: Session = Depends(get_db)):
 
 
 # ── Microsoft Teams OAuth ──────────────────────────────────────────────────────
+@app.get("/api/auth/config")
+def auth_config():
+    """บอก frontend ว่าตั้งค่า Azure แล้วหรือยัง — ยังไม่ตั้ง = ใช้ฟอร์มกรอกอีเมลแทน."""
+    return {"teams": bool(os.getenv("AZURE_CLIENT_ID") and os.getenv("AZURE_CLIENT_SECRET"))}
+
+
 @app.get("/auth/microsoft/login")
 def microsoft_login():
     """Redirect to Azure AD login."""
