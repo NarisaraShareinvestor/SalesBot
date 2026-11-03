@@ -65,9 +65,11 @@ class FollowUp(Base):
     due_date = Column(DateTime, nullable=True)
     done = Column(Boolean, default=False)
     created_by = Column(String(100), nullable=True)
+    creator_email = Column(String(255), nullable=True)  # อีเมลผู้สร้าง — ใช้หา Microsoft credential ตอนส่ง reminder
     source = Column(String(20), default="manual")  # manual | chat
     is_shared = Column(Boolean, default=False)  # False=ส่วนตัว, True=แชร์ทั้งทีม
     shared_with = Column(Text, nullable=True)   # comma-separated names for specific sharing
+    reminded = Column(Boolean, default=False)   # ส่ง reminder 30 นาทีไปแล้ว (กันยิงซ้ำทุก 5 นาที)
     created_at = Column(DateTime, default=func.now())
 
 

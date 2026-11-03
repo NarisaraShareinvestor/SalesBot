@@ -1,6 +1,6 @@
-# SalesBot — deploy alongside the hermes stack on the Hostinger VPS.
-# hermes_nginx (the front door, owns 80/443) reverse-proxies salesbot.ohmai.me
-# to this container BY NAME over the shared hermes docker network.
+# SalesBot — single container on the shared VPS (187.127.218.42), /opt/salesbot.
+# Host nginx (zz-salesbot.ohmai.me.conf) proxies salesbot.ohmai.me → 127.0.0.1:8001.
+# Everything is named salesbot* so it never collides with the other apps on the box.
 services:
   salesbot:
     build: .
@@ -8,7 +8,7 @@ services:
     container_name: salesbot
     restart: always
     env_file:
-      - ./data/.env            # OPENAI_API_KEY, OPENAI_MODEL, SMTP_*, EXPIRING_THRESHOLD_DAYS
+      - ./data/.env            # OPENAI_*, AZURE_*, REDIRECT_URI, ADMIN_TOKEN, SMTP_*, EXPIRING_THRESHOLD_DAYS
     environment:
       DATABASE_URL: sqlite:////data/salesbot.db
     volumes:
@@ -17,12 +17,6 @@ services:
       - ./data/user_smtp.json:/app/backend/user_smtp.json  # per-user SMTP persists
       - ./Data:/app/Data                                   # Excel import files (readonly)
       - ./frontend:/app/frontend                           # SPA — edits picked up without rebuild
-    networks:
-      - hermes                  # so hermes_nginx can reach http://salesbot:8000
     ports:
-      - "127.0.0.1:8001:8000"   # host-side health checks only (not the public path)
-
-networks:
-  hermes:
-    external: true
-    name: hermes-ai-skill-hub_hermes_network
+      - "127.0.0.1:8001:8000"   # localhost only — public entry is nginx on 443
+    mem_limit: 512m             # box is shared and RAM is tight

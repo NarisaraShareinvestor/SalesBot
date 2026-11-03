@@ -10,8 +10,11 @@ UI โทนเทา-ขาว เรียบหรู ไม่มี emoji �
 1. **Dashboard / มุมมองทีม** — การ์ดสรุป (จำนวนลูกค้า, มูลค่ารวม, Active, ใกล้หมด, หมดอายุ, ยังไม่มอบหมาย)
    + ตาราง "ภาพรวมตาม AE" (Lead ใช้ดูการมอบหมายงานของแต่ละคน) คลิกชื่อ AE → กรองดูลูกค้าของคนนั้น
 2. **Chat อัจฉริยะ** — gpt-4o + tool-calling เรียก query จริงบน DB (ไม่เดา/ไม่นับเอง)
-   - อ่าน: `search_customers` (ชื่อ/อีเมล/cc), `get_customer`, `list_expiring`, `aggregate`
-   - **เขียน**: `add_followup` — สั่ง "ลงตาราง วันนี้ 14:00 โทรหา ACE" → บันทึกงานลงระบบ (ดูได้ที่หน้า Notifications)
+   - อ่าน: `search_customers` (ชื่อ/อีเมล/cc + fuzzy ไทยแบบ char-bigram เมื่อสะกดเพี้ยน), `get_customer`,
+     `list_customers` (กรอง AE/สถานะ), `list_expiring`, `aggregate`,
+     `sales_opportunities` (Sales Radar: retain/winback/upsell พร้อม score)
+   - **เขียน**: `add_followup` — สั่ง "ลงตาราง วันนี้ 14:00 โทรหา ACE" → บันทึกงานลงระบบ (ดูได้ที่หน้า Notifications),
+     `manage_followup` — "งานนี้เสร็จแล้ว / เลื่อนนัดไปพรุ่งนี้ / ยกเลิกงาน" ผ่านแชทได้เลย
    - **ความจำ**: จำว่าผู้ใช้คือใคร (อีเมลจริงจากการ login) + AE คนไหน → คำถามคลุมเครือ ("ลูกค้าที่ฉันดูแล") ตอบเฉพาะของ AE นั้น;
      จำ chat history (rolling); จำโน้ตจากคำว่า "จำไว้นะ ..."
    - **Login**: หน้าแรกกรอกอีเมล/ชื่อ/AE/บทบาท → memory ผูกกับอีเมลจริงของแต่ละคน (เก็บใน localStorage + PROFILE)

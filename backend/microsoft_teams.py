@@ -129,6 +129,66 @@ def get_credential(db: Session, email: str) -> Optional[UserCredential]:
     return db.query(UserCredential).filter(UserCredential.email == email).first()
 
 
+def refresh_access_token(db: Session, cred: UserCredential) -> Optional[str]:
+    """แลก refresh_token เป็น access_token ใหม่ (Microsoft access token อยู่ได้ ~1 ชม.)."""
+    if not cred.refresh_token:
+        return None
+    token_url = f"https://login.microsoftonline.com/{AZURE_TENANT_ID}/oauth2/v2.0/token"
+    data = {
+        "client_id": AZURE_CLIENT_ID,
+        "scope": SCOPE,
+        "refresh_token": cred.refresh_token,
+        "grant_type": "refresh_token",
+        "client_secret": AZURE_CLIENT_SECRET,
+    }
+    try:
+        r = requests.post(token_url, data=data, timeout=10)
+        if r.status_code != 200:
+            print(f"Token refresh failed for {cred.email}: HTTP {r.status_code} {r.text[:200]}")
+            return None
+        tok = r.json()
+        cred.access_token = tok.get("access_token", "")
+        cred.refresh_token = tok.get("refresh_token", cred.refresh_token)
+        if "expires_in" in tok:
+            cred.token_expires_at = datetime.utcnow() + timedelta(seconds=tok["expires_in"])
+        cred.updated_at = datetime.utcnow()
+        db.commit()
+        return cred.access_token or None
+    except Exception as e:
+        print(f"Token refresh error: {e}")
+        return None
+
+
+def get_valid_access_token(db: Session, cred: UserCredential) -> Optional[str]:
+    """คืน access_token ที่ยังไม่หมดอายุ — refresh ให้อัตโนมัติถ้าใกล้หมด/หมดแล้ว."""
+    if (cred.token_expires_at
+            and cred.token_expires_at - datetime.utcnow() > timedelta(minutes=5)):
+        return cred.access_token
+    return refresh_access_token(db, cred)
+
+
+def create_calendar_event_sync(access_token: str, title: str, start_dt: datetime,
+                               end_dt: datetime, description: str = "") -> bool:
+    """สร้าง event ในปฏิทิน Outlook/Teams — start/end เป็นเวลาไทย (naive) จึงส่ง TZ Asia/Bangkok."""
+    headers = {"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"}
+    body = {
+        "subject": title,
+        "start": {"dateTime": start_dt.strftime("%Y-%m-%dT%H:%M:%S"), "timeZone": "Asia/Bangkok"},
+        "end": {"dateTime": end_dt.strftime("%Y-%m-%dT%H:%M:%S"), "timeZone": "Asia/Bangkok"},
+        "body": {"contentType": "HTML", "content": description},
+        "isReminderOn": True,
+        "reminderMinutesBeforeStart": 30,
+    }
+    try:
+        r = requests.post(f"{GRAPH_API_BASE}/me/events", headers=headers, json=body, timeout=10)
+        if r.status_code not in (200, 201):
+            print(f"Create calendar event failed: HTTP {r.status_code} {r.text[:200]}")
+        return r.status_code in (200, 201)
+    except Exception as e:
+        print(f"Create calendar event error: {e}")
+    return False
+
+
 async def create_calendar_event(
     access_token: str,
     title: str,

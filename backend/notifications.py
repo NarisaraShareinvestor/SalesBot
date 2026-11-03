@@ -12,7 +12,7 @@ from typing import Dict, List, Optional
 from sqlalchemy.orm import Session
 
 from models import Customer
-from services import EXPIRING_THRESHOLD_DAYS, customer_summary, expiry_state
+from services import EXPIRING_THRESHOLD_DAYS, customer_summary, expiry_state, now_bkk
 
 # ── AE → email mapping (แก้ได้ผ่านไฟล์หรือ UI) ───────────────────────────────
 AE_EMAIL_FILE = Path(__file__).resolve().parent / "ae_emails.json"
@@ -135,7 +135,7 @@ def _build_digest_html(ae: str, items: List[Dict]) -> str:
         )
     rows = "".join(parts)
     return f"""<h3>SalesBot — สรุปสัญญาใกล้หมด/หมดอายุ (AE: {ae})</h3>
-<p>มีทั้งหมด {len(items)} รายการ ณ วันที่ {datetime.now():%Y-%m-%d}</p>
+<p>มีทั้งหมด {len(items)} รายการ ณ วันที่ {now_bkk():%Y-%m-%d}</p>
 <table border="1" cellpadding="6" cellspacing="0">
 <tr><th>Account</th><th>บริษัท</th><th>วันหมดอายุ</th><th>สถานะ</th><th>มูลค่า</th></tr>
 {rows}</table>"""

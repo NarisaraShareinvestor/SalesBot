@@ -1,6 +1,6 @@
 """Shared helpers: expiry computation + Customer serialization (used by chat, CRUD, notifications)."""
 import os
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from typing import Dict, Optional
 
 from models import Customer
@@ -8,12 +8,20 @@ from models import Customer
 # สัญญาที่หมดภายในกี่วัน ถือว่า "ใกล้หมด"
 EXPIRING_THRESHOLD_DAYS = int(os.getenv("EXPIRING_THRESHOLD_DAYS", "60"))
 
+BKK_TZ = timezone(timedelta(hours=7))
+
+
+def now_bkk() -> datetime:
+    """เวลาไทยปัจจุบัน (naive) — container/VPS เป็น UTC ห้ามใช้ datetime.now() ตรงๆ
+    เพราะ due_date/วันหมดอายุทั้งระบบตีความเป็นเวลาไทย"""
+    return datetime.now(BKK_TZ).replace(tzinfo=None)
+
 
 def expiry_state(expiry_date: Optional[datetime], threshold_days: int = EXPIRING_THRESHOLD_DAYS) -> Dict:
     """คำนวณสถานะจากวันหมดอายุเทียบวันนี้ (ไม่เชื่อคอลัมน์ status ที่อาจ stale)."""
     if not expiry_date:
         return {"state": "unknown", "days_to_expiry": None}
-    days = (expiry_date.date() - datetime.now().date()).days
+    days = (expiry_date.date() - now_bkk().date()).days
     if days < 0:
         state = "expired"
     elif days <= threshold_days:
