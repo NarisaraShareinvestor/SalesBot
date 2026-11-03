@@ -11,7 +11,7 @@ from typing import Dict, List, Optional
 from sqlalchemy.orm import Session
 
 from models import Customer
-from services import EXPIRING_THRESHOLD_DAYS, expiry_state
+from services import EXPIRING_THRESHOLD_DAYS, lifecycle
 
 _VALUE_YEAR_RE = re.compile(r"contract value \((\d{4})\)")
 _NEG_KEYWORDS = ["ไม่ต่อ", "ยกเลิก", "ขอลด", "พิจารณา", "รอ", "ติดปัญหา", "ลดงบ", "ตัดงบ", "เงียบ"]
@@ -66,8 +66,7 @@ def _risk(c: Customer) -> Dict:
     return {"score": min(score, 100), "reasons": reasons, "trend": vt["trend"], "change_pct": vt["change_pct"]}
 
 
-def _base(c: Customer) -> Dict:
-    es = expiry_state(c.expiry_date)
+def _base(c: Customer, lc: Dict) -> Dict:
     return {
         "account": c.account,
         "company_name": c.company_name_en or c.company_name_th,
@@ -76,8 +75,10 @@ def _base(c: Customer) -> Dict:
         "grade": c.grade,
         "value": c.latest_value,
         "expiry_date": c.expiry_date.strftime("%Y-%m-%d") if c.expiry_date else None,
-        "expiry_state": es["state"],
-        "days_to_expiry": es["days_to_expiry"],
+        "stage": lc["stage"],
+        "stage_label": lc["stage_label"],
+        "expiry_state": lc["stage"],
+        "days_to_expiry": lc["days_to_expiry"],
     }
 
 
@@ -93,13 +94,11 @@ def retain(db: Session, ae: Optional[str] = None, within_days: int = EXPIRING_TH
         q = q.filter(Customer.ae_ir == ae)
     rows = []
     for c in q.all():
-        es = expiry_state(c.expiry_date)
-        if es["state"] != "expiring_soon":
-            continue
-        if (c.contract_status or "").strip().lower() == "cancelled":
+        lc = lifecycle(c)
+        if lc["stage"] != "expiring_soon":
             continue
         r = _risk(c)
-        d = _base(c)
+        d = _base(c, lc)
         d.update({"risk_score": r["score"], "risk_level": _level(r["score"]),
                   "reasons": r["reasons"], "trend": r["trend"], "change_pct": r["change_pct"]})
         rows.append(d)
@@ -108,20 +107,53 @@ def retain(db: Session, ae: Optional[str] = None, within_days: int = EXPIRING_TH
     return {"items": rows[:limit], "total": len(rows)}
 
 
+def renewal_outlook(db: Session, horizon_days: int = 90, lapsed_days: int = 90, limit: int = 8) -> Dict:
+    """For the dashboard: value due in the next 30/60/90 days, who to call first, and what lapsed
+    recently (still worth chasing). Cancelled contracts are never counted."""
+    buckets = [{"within": d, "count": 0, "value": 0.0} for d in (30, 60, 90) if d <= horizon_days]
+    upcoming, lapsed = [], []
+    lapsed_value = 0.0
+    for c in db.query(Customer).all():
+        lc = lifecycle(c)
+        days = lc["days_to_expiry"]
+        if lc["stage"] == "cancelled" or days is None:
+            continue
+        if 0 <= days <= horizon_days:
+            for b in buckets:
+                if days <= b["within"]:
+                    b["count"] += 1
+                    b["value"] += c.latest_value or 0
+                    break
+            r = _risk(c)
+            d = _base(c, lc)
+            d.update({"risk_level": _level(r["score"]), "reasons": r["reasons"]})
+            upcoming.append(d)
+        elif -lapsed_days <= days < 0:
+            lapsed.append(_base(c, lc) | {"status_stale": lc["status_stale"]})
+            lapsed_value += c.latest_value or 0
+    for b in buckets:
+        b["value"] = round(b["value"])
+    upcoming.sort(key=lambda x: x["days_to_expiry"])
+    lapsed.sort(key=lambda x: (x["value"] or 0), reverse=True)
+    return {"buckets": buckets, "upcoming": upcoming[:limit], "upcoming_total": len(upcoming),
+            "lapsed": lapsed[:limit], "lapsed_total": len(lapsed), "lapsed_value": round(lapsed_value),
+            "lapsed_days": lapsed_days}
+
+
 def winback(db: Session, ae: Optional[str] = None, limit: int = 60) -> Dict:
-    """ลูกค้าที่ยกเลิก/หมดสัญญา เรียงตามมูลค่าเดิม (โอกาสดึงกลับ)."""
+    """ลูกค้าที่ยกเลิก/หมดสัญญา (ตามวันจริง ไม่ใช่คอลัมน์ status) เรียงตามมูลค่าเดิม."""
     q = db.query(Customer)
     if ae:
         q = q.filter(Customer.ae_ir == ae)
     rows = []
     total_value = 0.0
     for c in q.all():
-        st = (c.contract_status or "").strip().lower()
-        if st not in ("cancelled", "expired"):
+        lc = lifecycle(c)
+        if lc["stage"] not in ("cancelled", "expired"):
             continue
         vt = value_trend(c.extra)
-        d = _base(c)
-        d.update({"lost_reason": c.contract_status, "trend": vt["trend"],
+        d = _base(c, lc)
+        d.update({"lost_reason": lc["stage_label"], "status_stale": lc["status_stale"], "trend": vt["trend"],
                   "change_pct": vt["change_pct"], "remark": c.contract_status_text})
         rows.append(d)
         total_value += c.latest_value or 0
@@ -137,13 +169,13 @@ def upsell(db: Session, ae: Optional[str] = None, limit: int = 60) -> Dict:
         q = q.filter(Customer.ae_ir == ae)
     rows = []
     for c in q.all():
-        st = (c.contract_status or "").strip().lower()
-        if st == "cancelled":  # ยกเลิกแล้วไปอยู่ win-back
+        lc = lifecycle(c)
+        if lc["stage"] not in ("active", "expiring_soon"):  # หมด/ยกเลิกแล้วไปอยู่ win-back
             continue
         vt = value_trend(c.extra)
         g = (c.grade or "").strip().upper()
         score = _grade_boost.get(g, 0) + min((c.latest_value or 0) / 10000, 40)
-        d = _base(c)
+        d = _base(c, lc)
         d.update({"upsell_score": round(score), "trend": vt["trend"], "change_pct": vt["change_pct"]})
         rows.append(d)
     rows.sort(key=lambda x: x["upsell_score"], reverse=True)

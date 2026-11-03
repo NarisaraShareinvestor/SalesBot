@@ -152,6 +152,9 @@ def import_all():
                 fields[field] = to_dt(val)
             elif field in ("address_th", "address_en"):
                 fields[field] = clean(val)
+            elif field == "contract_status":
+                v = clean(val)
+                fields[field] = v.title() if isinstance(v, str) else v  # cancelled → Cancelled
             else:
                 fields[field] = clean(val)
 

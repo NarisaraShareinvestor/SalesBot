@@ -3,6 +3,9 @@ __pycache__/
 *.pyc
 .env
 backend/salesbot.db
+backend/salesbot.db-*
+backend/.session_secret
+.pytest_cache/
 backend/ae_emails.json
 backend/user_smtp.json
 .DS_Store

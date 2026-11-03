@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SalesBot — IR Sales Intelligence</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Anuphan:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root{
     --bg:#f6f7f9; --card:#ffffff; --line:#e6e8ec; --line2:#eef0f3;
@@ -64,6 +64,27 @@
   .stat .val{font-size:23px;font-weight:700;letter-spacing:-.5px;margin-top:7px}
   .stat .dot{width:7px;height:7px;border-radius:50%}
   .dot-ok{background:var(--ok)} .dot-warn{background:var(--warn)} .dot-bad{background:var(--bad)} .dot-mut{background:var(--faint)}
+  .stats.kpis{grid-template-columns:1.3fr repeat(4,1fr)}
+  .stat .hint{font-size:12px;color:var(--muted);margin-top:4px;line-height:1.4}
+  .stat.clickable{cursor:pointer} .stat.clickable:hover .val{text-decoration:underline;text-underline-offset:4px}
+  .dash-grid{display:grid;grid-template-columns:1.35fr 1fr;gap:18px;margin-bottom:18px;align-items:start}
+  .dash-side{display:flex;flex-direction:column;gap:18px}
+  .dash-grid>*,.dash-side>*{min-width:0}
+  .rows{padding:4px 8px 8px}
+  .drow{display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:12px;cursor:pointer}
+  .drow+.drow{border-top:1px solid var(--line2)}
+  .drow:hover{background:#f3f4f6}
+  .drow .body{flex:1;min-width:0}
+  .drow .ttl{font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .drow .sub{font-size:12px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .drow .right{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0}
+  .drow .days{font-size:12.5px;font-weight:600;white-space:nowrap}
+  .bar-row{display:grid;grid-template-columns:118px 1fr 86px;align-items:center;gap:12px;padding:7px 0}
+  .bar-lab{font-size:12.5px;font-weight:600;white-space:nowrap}
+  .bar-track{height:10px;border-radius:6px;background:#eef0f3;overflow:hidden}
+  .bar-fill{height:100%;border-radius:6px;background:var(--warn);min-width:3px}
+  .bar-fill.hot{background:var(--bad)}
+  .bar-val{font-size:13px;font-weight:600;text-align:right;font-variant-numeric:tabular-nums}
 
   table{width:100%;border-collapse:collapse;font-size:13px}
   th{text-align:left;color:var(--muted);font-weight:600;font-size:11.5px;text-transform:uppercase;letter-spacing:.3px;
@@ -98,6 +119,7 @@
   .msg .time{font-size:10px;color:var(--faint);margin-top:4px}
   .msg .bubble .md-h{display:inline-block;font-weight:700;margin-top:9px;font-size:13.5px}
   .msg .bubble strong{font-weight:700}
+  .cust-link{font-weight:600;text-decoration:underline;text-underline-offset:3px;cursor:pointer;color:inherit}
   .chat-input{padding:14px 18px;border-top:1px solid var(--line2)}
   .chat-input form{display:flex;gap:10px}
   .chat-input input{flex:1;border:1px solid var(--line);border-radius:10px;padding:11px 14px;font-size:14px;outline:none;font-family:inherit}
@@ -266,7 +288,10 @@
     .topbar .sub{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .bell{width:40px;height:40px}
     .scroll{padding:6px 14px 24px}
-    .stats{grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:14px}
+    .stats,.stats.kpis{grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:14px}
+    .stats.kpis>.stat:first-child{grid-column:span 2}
+    .dash-grid{grid-template-columns:1fr}
+    .bar-row{grid-template-columns:96px 1fr 72px;gap:8px}
     .stat{padding:13px 14px}
     .stat .val{font-size:20px}
     .tbl-wrap table{min-width:580px}
@@ -293,6 +318,8 @@
     .pager{flex-wrap:wrap;gap:8px}
   }
 </style>
+<link rel="stylesheet" href="/static/glass.css">
+<link rel="icon" href="data:,">
 </head>
 <body>
   <aside class="sidebar">
@@ -346,9 +373,26 @@
           </div>
           <div id="briefBody" class="brief-body">กำลังสรุป…</div>
         </div>
-        <div class="stats" id="statCards"></div>
+        <div class="stats kpis" id="statCards"></div>
+        <div class="dash-grid">
+          <div class="card">
+            <div class="card-head"><div><h3>ต้องโทรก่อน</h3><div class="sub" id="callSub">สัญญาที่ครบกำหนดใน 90 วัน เรียงตามวันที่เหลือ — คลิกเพื่อเปิดลูกค้า</div></div>
+              <button class="lnk" onclick="setView('radar')">เรดาร์ทั้งหมด</button></div>
+            <div id="callList" class="rows"></div>
+          </div>
+          <div class="dash-side">
+            <div class="card">
+              <div class="card-head"><div><h3>มูลค่าที่ครบกำหนด</h3><div class="sub">บาท/ปี · ไม่นับสัญญาที่ยกเลิก</div></div></div>
+              <div id="bucketBars" style="padding:14px 20px 18px"></div>
+            </div>
+            <div class="card">
+              <div class="card-head"><div><h3>หลุดล่าสุด ยังตามได้</h3><div class="sub" id="lapsedSub">หมดอายุใน 90 วันที่ผ่านมาและยังไม่ต่อ</div></div></div>
+              <div id="lapsedList" class="rows"></div>
+            </div>
+          </div>
+        </div>
         <div class="card" style="margin-bottom:18px">
-          <div class="card-head"><div><h3>ภาพรวมตาม AE</h3><div class="sub">การมอบหมายงานและสถานะสัญญาของแต่ละคน — คลิกเพื่อดูรายชื่อลูกค้า</div></div></div>
+          <div class="card-head"><div><h3>ภาระงานตาม AE</h3><div class="sub">ลูกค้าในมือ = ใช้งานอยู่ + ใกล้หมด + หมดยังไม่ต่อ — คลิกเพื่อดูรายชื่อลูกค้า</div></div></div>
           <div class="tbl-wrap" style="padding:4px 8px"><table id="aeTable"></table></div>
         </div>
         <div class="card">
@@ -391,7 +435,7 @@
               <input id="searchBox" placeholder="ค้นหาบริษัท, Account, AE..." oninput="debouncedReload()"></div>
             <span id="aeChip"></span>
             <select class="flt" id="statusFilter" onchange="reload()">
-              <option value="">สถานะทั้งหมด</option><option>Active</option><option>Expired</option><option>Cancelled</option>
+              <option value="">ทุกสถานะ</option><option value="active">ใช้งานอยู่</option><option value="expiring_soon">ใกล้หมด</option><option value="expired">หมดอายุ ยังไม่ต่อ</option><option value="stale">สถานะต้องอัปเดต</option><option value="cancelled">ยกเลิกแล้ว</option><option value="pending">กำลังดำเนินการ</option><option value="unknown">ไม่มีวันหมดอายุ</option>
             </select>
           </div>
           <div class="tbl-wrap" style="padding:0 8px"><table id="dataTable"></table></div>
@@ -641,10 +685,11 @@
     </div>
 
     <div id="loginManual" style="display:none">
-      <p style="font-size:12.5px;color:var(--muted);margin:8px 0 14px">กรอกอีเมลบริษัทและชื่อ เพื่อให้ระบบจดจำคุณและงานของคุณ</p>
+      <p style="font-size:12.5px;color:var(--muted);margin:8px 0 14px">กรอกอีเมลบริษัท ชื่อ และรหัสทีม เข้าครั้งเดียวจำไว้ 30 วัน</p>
       <div class="fld" style="margin-bottom:13px"><label>อีเมล *</label><input id="lg_email" type="email" autocomplete="email" data-1p-ignore data-lpignore="true" placeholder="name@shareinvestor.com"></div>
       <div class="fld" style="margin-bottom:13px"><label>ชื่อ-สกุล *</label><input id="lg_name" autocomplete="name" data-1p-ignore data-lpignore="true" placeholder="เช่น Narisara P."></div>
-      <div class="fld"><label>ชื่อเล่น / AE</label><input id="lg_ae" list="aeList" autocomplete="off" data-1p-ignore data-lpignore="true" placeholder="เช่น Maprang"></div>
+      <div class="fld" style="margin-bottom:13px"><label>ชื่อเล่น / AE</label><input id="lg_ae" list="aeList" autocomplete="off" data-1p-ignore data-lpignore="true" placeholder="เช่น Maprang"></div>
+      <div class="fld"><label>รหัสทีม *</label><input id="lg_pw" type="password" autocomplete="current-password" placeholder="รหัสที่หัวหน้าทีมแจก" onkeydown="if(event.key==='Enter')doLogin()"></div>
       <div id="lg_err" style="display:none;color:#b42318;font-size:12.5px;margin-top:12px"></div>
       <button class="btn primary" style="width:100%;justify-content:center;margin-top:18px" onclick="doLogin()">เข้าสู่ระบบ</button>
     </div>
@@ -659,7 +704,7 @@
       <div class="fld"><label>Company Name (EN)</label><input id="f_company_name_en"></div>
       <div class="fld"><label>Company Name (TH)</label><input id="f_company_name_th"></div>
       <div class="fld"><label>Product</label><select id="f_contract_type"><option value="">-</option><option>IR</option><option>IR+WD</option><option>WD</option></select></div>
-      <div class="fld"><label>Status</label><select id="f_contract_status"><option value="">-</option><option>Active</option><option>Expired</option><option>Cancelled</option></select></div>
+      <div class="fld"><label>Status</label><select id="f_contract_status"><option value="">-</option><option>Active</option><option>Expired</option><option>Cancelled</option><option>On Process</option><option>Payment Pending</option></select></div>
       <div class="fld"><label>Effective Date</label><input id="f_effective_date" type="date"></div>
       <div class="fld"><label>Expiry Date</label><input id="f_expiry_date" type="date"></div>
       <div class="fld"><label>Monthly Payment</label><input id="f_monthly_payment" type="number" placeholder="บาท/เดือน"></div>
@@ -726,24 +771,36 @@
 const API = "";
 const ADMIN_EMAIL = "narisara.pa@shareinvestor.com";
 let AES = [];
-let me = JSON.parse(localStorage.getItem("salesbot_me") || "null");  // {email,name,ae,role}
+let me = null;  // {email,name,ae,role} — from /api/auth/me (server session), never trusted from localStorage
+// any API call that comes back 401 means the session ended → show the login screen
+const _fetch = window.fetch.bind(window);
+window.fetch = async (...a) => { const r = await _fetch(...a);
+  if (r.status === 401 && String(a[0]).includes("/api/") && !String(a[0]).includes("/api/auth/")) showLogin();
+  return r; };
 let state = { view:"dashboard", tab:"all", page:1, pageSize:8, editing:null, aeFilter:"" };
 const isTeam = () => !me || me.role==="lead" || !me.ae;   // lead/ไม่มี AE = มุมมองทั้งทีม
 const meAE = () => (me && me.role!=="lead") ? (me.ae||"") : "";
 
 const fmtMoney = v => v==null||v==="" ? "-" : Number(v).toLocaleString("th-TH",{maximumFractionDigits:0});
 const fmtDate = s => { if(!s) return "-"; const d=new Date(s); return isNaN(d)?s:d.toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}); };
-const esc = s => (s==null?"":String(s)).replace(/</g,"&lt;");
+const esc = s => (s==null?"":String(s)).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fmtMillion = v => v==null ? "-" : (Math.abs(v)>=1e6 ? (v/1e6).toLocaleString("th-TH",{maximumFractionDigits:2})+" ล้าน" : fmtMoney(v));
 function renderMd(t){
   let s=esc(t||"-");
   s=s.replace(/\n{2,}/g,"\n");                                          // ลดช่องว่างที่กว้างเกิน
   s=s.replace(/^[ \t]*#{1,6}[ \t]+(.+?)\s*$/gm,'<span class="md-h">$1</span>'); // หัวข้อ
   s=s.replace(/\*\*(.+?)\*\*/g,"<strong>$1</strong>");
-  s=s.replace(/\[(.+?)\]\((.+?)\)/g,'<a href="$2" target="_blank" style="color:inherit;text-decoration:underline;cursor:pointer">$1</a>'); // links                  // **bold** → ตัวหนา
+  s=s.replace(/\[(.+?)\]\((https?:\/\/[^\s)]+)\)/g,'<a href="$2" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline;cursor:pointer">$1</a>'); // links (http/https only)
+  s=s.replace(/\[([^\]]+?)\]\(customer:([A-Za-z0-9&.\-]+)\)/g,(m,t,acc)=>`<a class="cust-link" onclick="editCustomer('${acc}')">${t}</a>`); // customer links from the bot                  // **bold** → ตัวหนา
   s=s.replace(/(^|\n)[ \t]*[-•][ \t]+/g,"$1 • ");                  // bullet สม่ำเสมอ + ย่อหน้า
   return s;
 }
 function statusBadge(st){const m={Active:"b-ok",Expired:"b-bad",Cancelled:"b-mut"};return `<span class="badge ${m[st]||'b-mut'}">${esc(st)||'-'}</span>`;}
+// stage = the one status used everywhere (services.lifecycle)
+function stageBadge(c){const m={active:"b-ok",expiring_soon:"b-warn",expired:"b-bad"};
+  return `<span class="badge ${m[c.stage]||'b-mut'}">${esc(c.stage_label||c.stage||'-')}</span>`+
+    (c.status_stale?'<div class="mut" style="font-size:11px;margin-top:3px">ในระบบยังเป็น Active</div>':'');}
+const RISK={high:["b-bad","เสี่ยงสูง"],mid:["b-warn","เสี่ยงกลาง"],low:["b-mut","เสี่ยงต่ำ"]};
 function dateCls(es){return es==="expired"?"d-bad":(es==="expiring_soon"?"d-warn":"");}
 
 /* ── login / identity ── */
@@ -755,30 +812,40 @@ function renderWho(){
   const adm=document.getElementById("nav-admin");
   if(adm)adm.style.display=(me.email||"").toLowerCase()===ADMIN_EMAIL?"flex":"none";
 }
-async function _registerUser(email,name,ae){
-  if(!email||!email.toLowerCase().endsWith('@shareinvestor.com'))return;
-  const nickname=ae||name||email.split('@')[0];
-  fetch(`${API}/api/users`,{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({email:email.toLowerCase(),nickname,full_name:name||null})}).catch(()=>{});
-}
 
-function logout(){ localStorage.removeItem("salesbot_me"); me=null; document.getElementById("loginModal").classList.add("open"); }
+async function showLogin(){
+  const cfg = await _fetch(`${API}/api/auth/config`).then(r=>r.json()).catch(()=>({teams:false}));
+  document.getElementById("loginMicrosoft").style.display = cfg.teams ? "block" : "none";
+  document.getElementById("loginManual").style.display = cfg.teams ? "none" : "block";
+  document.getElementById("loginModal").classList.add("open");
+}
+async function logout(){ await _fetch(`${API}/api/auth/logout`,{method:"POST"}); localStorage.removeItem("salesbot_me"); me=null; showLogin(); }
 
 // ใช้ตอนยังไม่ได้ตั้งค่า Azure — ทุกคนเป็น lead เหมือนตอน login ผ่าน Teams
-function doLogin(){
+async function doLogin(){
   const email=document.getElementById("lg_email").value.trim().toLowerCase();
   const name=document.getElementById("lg_name").value.trim();
+  const password=document.getElementById("lg_pw").value;
   const err=document.getElementById("lg_err");
+  const say=m=>{err.innerHTML=m; err.style.display=m?"block":"none";};
   const msg=!email.endsWith("@shareinvestor.com")?`อีเมลต้องลงท้ายด้วย @shareinvestor.com (ตอนนี้กรอกไว้: "${esc(email)||"ว่าง"}")`
-           :!name?"กรุณากรอกชื่อ-สกุล":"";
-  err.innerHTML=msg; err.style.display=msg?"block":"none";
-  if(msg)return;
+           :!name?"กรุณากรอกชื่อ-สกุล":!password?"กรุณากรอกรหัสทีม":"";
+  say(msg); if(msg)return;
   const ae=document.getElementById("lg_ae").value.trim()||name.split(" ")[0];
-  me={email,name,ae,role:"lead"};
-  localStorage.setItem("salesbot_me",JSON.stringify(me));
-  _registerUser(email,name,ae);
+  const r=await _fetch(`${API}/api/auth/login`,{method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({email,name,ae,password})});
+  const d=await r.json().catch(()=>({}));
+  if(!r.ok){ say(esc(d.detail||"เข้าสู่ระบบไม่สำเร็จ")); return; }
+  document.getElementById("lg_pw").value="";
+  await startSession(d);
+}
+async function startSession(u){
+  me={email:u.email,name:u.name,ae:u.ae,role:"lead"};
+  localStorage.removeItem("salesbot_me");  // old builds cached identity here
   document.getElementById("loginModal").classList.remove("open");
-  boot();
+  AES = await (await fetch(`${API}/api/aes`)).json();
+  document.getElementById("aeList").innerHTML = AES.map(a=>`<option value="${esc(a)}">`).join("");
+  renderWho(); boot();
 }
 
 function loginWithMicrosoftTeams(){
@@ -825,26 +892,58 @@ async function loadBriefing(refresh){
 }
 async function loadDashboard(){
   loadBriefing(false);
-  const d=await (await fetch(`${API}/api/dashboard`)).json();
-  const t=d.totals;
+  let d;
+  try{ d=await (await fetch(`${API}/api/dashboard`)).json(); }
+  catch(e){ document.getElementById("statCards").innerHTML='<div class="empty">โหลดข้อมูลไม่ได้ ลองรีเฟรชอีกครั้ง</div>'; return; }
+  const t=d.totals, o=d.outlook;
+  const inHand=t.active+t.expiring_soon+t.expired;
+  const due90=o.buckets.reduce((s,b)=>s+b.value,0), due90n=o.buckets.reduce((s,b)=>s+b.count,0);
+  if(d.generated_at)document.getElementById("viewSub").textContent=
+    `ข้อมูล ณ ${d.generated_at.slice(11,16)} น. · ใกล้หมด = เหลือไม่เกิน ${d.threshold_days} วัน`;
+
+  // KPI: each answers a question in the brief — the first one is the anchor
   const cards=[
-    {lab:"ลูกค้าทั้งหมด",val:t.customers,dot:""},
-    {lab:"มูลค่ารวม (บาท)",val:fmtMoney(t.total_value),dot:""},
-    {lab:"Active",val:t.active,dot:"dot-ok"},
-    {lab:"ใกล้หมดอายุ",val:t.expiring_soon,dot:"dot-warn"},
-    {lab:"หมดอายุ",val:t.expired,dot:"dot-bad"},
-    {lab:"ยังไม่มอบหมาย",val:t.unassigned,dot:"dot-mut"},
+    {lab:"มูลค่าสัญญาในมือ",val:fmtMillion(t.total_value),hint:`${inHand} ราย · บาท/ปี ไม่รวมที่ยกเลิก`},
+    {lab:"ครบกำหนดใน 90 วัน",val:fmtMillion(due90),hint:`${due90n} ราย · 30 วันแรก ${fmtMillion(o.buckets[0].value)}`,dot:"dot-warn"},
+    {lab:"หลุดใน 90 วันที่ผ่านมา",val:fmtMillion(o.lapsed_value),hint:`${o.lapsed_total} ราย ยังไม่ต่อ`,dot:"dot-bad"},
+    {lab:"สถานะต้องอัปเดต",val:t.status_stale,hint:"ในระบบเป็น Active แต่หมดอายุแล้ว",go:"stale"},
+    {lab:"งานเลยกำหนด",val:t.tasks_overdue,hint:t.tasks_overdue?"ดูที่งานติดตามด้านล่าง":"ไม่มีงานค้างเกินกำหนด",dot:t.tasks_overdue?"dot-bad":""},
   ];
   document.getElementById("statCards").innerHTML = cards.map(c=>
-    `<div class="stat"><div class="lab">${c.dot?`<span class="dot ${c.dot}"></span>`:""}${c.lab}</div><div class="val">${c.val}</div></div>`).join("");
+    `<div class="stat${c.go?' clickable':''}" ${c.go?`onclick="gotoStage('${c.go}')" title="ดูรายชื่อ"`:''}>
+      <div class="lab">${c.dot?`<span class="dot ${c.dot}"></span>`:""}${c.lab}</div>
+      <div class="val">${c.val}</div><div class="hint">${esc(c.hint)}</div></div>`).join("");
+
+  const custRow=(c,right)=>`<div class="drow" onclick="editCustomer('${esc(c.account)}')">
+      <div class="body"><div class="ttl"><span class="acct">${esc(c.account)}</span> <span class="mut">${esc(c.company_name||"")}</span></div>
+      <div class="sub">${esc(c.ae_ir||"ยังไม่มีคนดูแล")} · ${esc(c.product||"-")} · ${fmtMoney(c.value)} บาท/ปี</div></div>${right}</div>`;
+  document.getElementById("callList").innerHTML = o.upcoming.map(c=>custRow(c,
+      `<div class="right"><span class="badge ${RISK[c.risk_level][0]}">${RISK[c.risk_level][1]}</span>
+       <div class="days ${c.days_to_expiry<=30?'d-bad':'d-warn'}">${c.days_to_expiry===0?"วันนี้":`อีก ${c.days_to_expiry} วัน`}</div></div>`)).join("")
+    || '<div class="empty">ไม่มีสัญญาครบกำหนดใน 90 วัน</div>';
+  if(o.upcoming_total>o.upcoming.length)document.getElementById("callSub").textContent=
+    `แสดง ${o.upcoming.length} จาก ${o.upcoming_total} รายที่ครบกำหนดใน 90 วัน — คลิกเพื่อเปิดลูกค้า`;
+
+  const maxV=Math.max(1,...o.buckets.map(b=>b.value)); let lo=0;
+  document.getElementById("bucketBars").innerHTML = o.buckets.map(b=>{
+    const r=`<div class="bar-row"><div class="bar-lab">${lo}–${b.within} วัน<span class="mut"> · ${b.count} ราย</span></div>
+      <div class="bar-track"><div class="bar-fill${lo===0?' hot':''}" style="width:${Math.round(b.value/maxV*100)}%"></div></div>
+      <div class="bar-val">${fmtMillion(b.value)}</div></div>`; lo=b.within+1; return r;}).join("");
+
+  document.getElementById("lapsedList").innerHTML = o.lapsed.slice(0,5).map(c=>custRow(c,
+      `<div class="right"><div class="days d-bad">หมดมา ${-c.days_to_expiry} วัน</div>
+       ${c.status_stale?'<div class="mut" style="font-size:11px">ในระบบยังเป็น Active</div>':''}</div>`)).join("")
+    || '<div class="empty">ไม่มีสัญญาที่หลุดในช่วงนี้</div>';
+
   const t2=document.getElementById("aeTable");
-  t2.innerHTML="<thead><tr><th>AE-IR</th><th class='num'>ลูกค้า</th><th class='num'>Active</th><th class='num'>ใกล้หมด</th><th class='num'>หมดอายุ</th><th class='num'>มูลค่ารวม</th></tr></thead><tbody>"+
-    d.by_ae.map(a=>`<tr class="clickable" onclick="gotoAE('${esc(a.ae)}')">
+  t2.innerHTML="<thead><tr><th>AE-IR</th><th class='num'>ลูกค้าในมือ</th><th class='num'>ใช้งานอยู่</th><th class='num'>ใกล้หมด</th><th class='num'>หมดยังไม่ต่อ</th><th class='num'>มูลค่าในมือ</th><th class='num'>งานค้าง</th></tr></thead><tbody>"+
+    d.by_ae.filter(a=>a.active+a.expiring_soon+a.expired+a.open>0).map(a=>`<tr class="clickable" onclick="gotoAE('${esc(a.ae)}')">
       <td class="acct">${esc(a.ae)} ${a.ae===meAE()?'<span class="badge b-mut" style="margin-left:4px">คุณ</span>':''}</td>
-      <td class="num">${a.customers}</td><td class="num">${a.active}</td>
+      <td class="num">${a.active+a.expiring_soon+a.expired}</td><td class="num">${a.active}</td>
       <td class="num">${a.expiring_soon?`<span class="d-warn">${a.expiring_soon}</span>`:0}</td>
       <td class="num">${a.expired?`<span class="d-bad">${a.expired}</span>`:0}</td>
-      <td class="num">${fmtMoney(a.total_value)}</td></tr>`).join("")+"</tbody>";
+      <td class="num">${fmtMoney(a.total_value)}</td>
+      <td class="num">${a.overdue?`<span class="d-bad">${a.open} (เลย ${a.overdue})</span>`:a.open}</td></tr>`).join("")+"</tbody>";
   loadTasks();
 }
 async function loadTasks(){
@@ -861,8 +960,10 @@ async function loadTasks(){
 }
 async function toggleTask(id,done){await fetch(`${API}/api/followups/${id}`,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({done})});loadTasks();}
 async function delTask(id){await fetch(`${API}/api/followups/${id}`,{method:"DELETE"});loadTasks();}
-function gotoAE(ae){ state.aeFilter = ae==="ไม่ระบุ"?"":ae; state.tab="all"; state.page=1;
+function gotoAE(ae){ state.aeFilter = ae; state.tab="all"; state.page=1;
   setView("data"); setTab("all"); }
+function gotoStage(stage){ state.aeFilter=""; state.tab="all"; state.page=1;
+  setView("data"); document.getElementById("statusFilter").value=stage; setTab("all"); }
 
 /* ── Data ── */
 let _t; function debouncedReload(){clearTimeout(_t);_t=setTimeout(reload,300);}
@@ -885,12 +986,12 @@ function setTab(t){state.tab=t;state.page=1;
 async function loadCustomers(){
   const q=new URLSearchParams({page:state.page,page_size:state.pageSize});
   const s=document.getElementById("searchBox").value.trim(); if(s)q.set("search",s);
-  const st=document.getElementById("statusFilter").value; if(st)q.set("status",st);
+  const st=document.getElementById("statusFilter").value; if(st)q.set("stage",st);
   if(state.aeFilter)q.set("ae",state.aeFilter);
   const d=await (await fetch(`${API}/api/customers?${q}`)).json();
   renderTable(["Account","Company Name","AE-IR","Expiry Date","Status","Product","มูลค่า"],
     d.items.map(c=>({account:c.account,cells:[`<span class="acct">${esc(c.account)}</span>`,esc(c.company_name)||"-",esc(c.ae_ir)||'<span class="mut">—</span>',
-      `<span class="${dateCls(c.expiry_state)}">${fmtDate(c.expiry_date)}</span>`,statusBadge(c.status),esc(c.product)||"-",
+      `<span class="${dateCls(c.expiry_state)}">${fmtDate(c.expiry_date)}</span>`,stageBadge(c),esc(c.product)||"-",
       `<span class="num" style="display:block">${fmtMoney(c.value)}</span>`]})),[0,0,0,0,0,0,1],true);
   renderPager(d);
 }
@@ -937,7 +1038,7 @@ function renderPager(d){
 function exportCsv(){
   const q=new URLSearchParams();
   const s=document.getElementById("searchBox").value.trim();if(s)q.set("search",s);
-  const st=document.getElementById("statusFilter").value;if(st)q.set("status",st);
+  const st=document.getElementById("statusFilter").value;if(st)q.set("stage",st);
   if(state.aeFilter)q.set("ae",state.aeFilter);
   window.open(`${API}/api/export/customers?${q}`,"_blank");
 }
@@ -1674,30 +1775,11 @@ function boot(){
   loadNotifBadge();
 }
 (async function(){
-  // Check for OAuth callback from Microsoft Teams
-  const params = new URLSearchParams(window.location.search);
-  if(params.has("login") && params.get("login")==="success"){
-    const email = params.get("email");
-    const name = params.get("name");
-    if(email && name){
-      me = {email, name, ae: name.split(" ")[0], role: "lead"};
-      localStorage.setItem("salesbot_me", JSON.stringify(me));
-      _registerUser(email, name, name.split(' ')[0]);
-      window.history.replaceState({}, document.title, window.location.pathname);
-    }
-  }
-
-  AES = await (await fetch(`${API}/api/aes`)).json();
-  document.getElementById("aeList").innerHTML = AES.map(a=>`<option value="${a}">`).join("");
-  if(me){
-    _registerUser(me.email, me.name, me.nickname||me.ae);  // register existing session silently
-    renderWho(); boot();
-  } else {
-    const cfg = await fetch(`${API}/api/auth/config`).then(r=>r.json()).catch(()=>({teams:true}));
-    document.getElementById("loginMicrosoft").style.display = cfg.teams ? "block" : "none";
-    document.getElementById("loginManual").style.display = cfg.teams ? "none" : "block";
-    document.getElementById("loginModal").classList.add("open");
-  }
+  if(new URLSearchParams(location.search).has("login"))   // back from Microsoft Teams
+    history.replaceState({}, document.title, location.pathname);
+  const r = await _fetch(`${API}/api/auth/me`);
+  if(r.ok) await startSession(await r.json());
+  else showLogin();
 })();
 </script>
 </body>

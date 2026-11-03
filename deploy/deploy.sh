@@ -36,15 +36,14 @@ EOF
     || { rm -f "$VHOST"; nginx -t && systemctl reload nginx; echo "!! certbot failed"; exit 1; }
 fi
 
-# 4) basic-auth password (first time only) — shared team login until the APIs check sessions
-HTPASS="/etc/nginx/salesbot.htpasswd"
-if [ ! -f "$HTPASS" ]; then
+# 4) team password for the login form (only used while AZURE_* is not set) — first time only
+if ! grep -q '^TEAM_PASSWORD=' data/.env; then
   PW="$(openssl rand -base64 24 | tr -d '/+=' | cut -c1-16)"
-  printf 'salesbot:%s\n' "$(openssl passwd -apr1 "$PW")" > "$HTPASS"
-  chown root:www-data "$HTPASS"; chmod 640 "$HTPASS"
-  printf 'user: salesbot\npassword: %s\n' "$PW" > /root/salesbot-basic-auth.txt
-  chmod 600 /root/salesbot-basic-auth.txt
-  echo "==> basic auth created — credentials in /root/salesbot-basic-auth.txt"
+  printf '\nTEAM_PASSWORD=%s\n' "$PW" >> data/.env
+  printf 'SalesBot team password: %s\n' "$PW" > /root/salesbot-team-password.txt
+  chmod 600 /root/salesbot-team-password.txt
+  echo "==> team password created — in /root/salesbot-team-password.txt"
+  docker compose up -d --force-recreate salesbot
 fi
 
 # 5) real vhost — roll back if nginx rejects it so the other sites never go down

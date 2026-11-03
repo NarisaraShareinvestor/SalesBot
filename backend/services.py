@@ -31,9 +31,38 @@ def expiry_state(expiry_date: Optional[datetime], threshold_days: int = EXPIRING
     return {"state": state, "days_to_expiry": days}
 
 
+# ── Lifecycle: the ONE definition of a customer's status, used by dashboard, data table,
+#    notifications, radar and every chat tool — so the numbers match everywhere.
+STAGES = {
+    "active": "ใช้งานอยู่",            # expiry more than EXPIRING_THRESHOLD_DAYS away
+    "expiring_soon": "ใกล้หมด",        # 0..EXPIRING_THRESHOLD_DAYS days left
+    "expired": "หมดอายุ ยังไม่ต่อ",     # expiry passed and not cancelled
+    "cancelled": "ยกเลิกแล้ว",          # contract_status = Cancelled (any date)
+    "pending": "กำลังดำเนินการ",        # no expiry date yet, status On Process / Payment Pending
+    "unknown": "ไม่มีวันหมดอายุ",       # no expiry date, nothing else to go on
+}
+PIPELINE_STAGES = ("active", "expiring_soon", "expired")  # still a customer we sell to
+
+
+def lifecycle(c: Customer) -> Dict:
+    """stage + days left. `status_stale` = the stored status still says Active but the date has passed."""
+    status = (c.contract_status or "").strip().lower()
+    es = expiry_state(c.expiry_date)
+    if status == "cancelled":
+        stage = "cancelled"
+    elif es["state"] != "unknown":
+        stage = es["state"]
+    elif status in ("on process", "payment pending"):
+        stage = "pending"
+    else:
+        stage = "unknown"
+    return {"stage": stage, "stage_label": STAGES[stage], "days_to_expiry": es["days_to_expiry"],
+            "status_stale": stage == "expired" and status == "active"}
+
+
 def customer_summary(c: Customer) -> Dict:
     """ข้อมูลย่อสำหรับตาราง / รายการ chat."""
-    es = expiry_state(c.expiry_date)
+    lc = lifecycle(c)
     return {
         "account": c.account,
         "company_name": c.company_name_en or c.company_name_th,
@@ -42,52 +71,45 @@ def customer_summary(c: Customer) -> Dict:
         "expiry_date": c.expiry_date.strftime("%Y-%m-%d") if c.expiry_date else None,
         "status": c.contract_status,
         "value": c.latest_value,
-        "expiry_state": es["state"],
-        "days_to_expiry": es["days_to_expiry"],
+        "stage": lc["stage"],
+        "stage_label": lc["stage_label"],
+        "status_stale": lc["status_stale"],
+        "expiry_state": lc["stage"],
+        "days_to_expiry": lc["days_to_expiry"],
     }
 
 
 def dashboard_data(db) -> Dict:
-    """ภาพรวมทั้งทีม + แยกตาม AE (ใช้สำหรับ Dashboard / มุมมอง Lead)."""
-    customers = db.query(Customer).all()
-    totals = {"customers": 0, "total_value": 0.0, "active": 0,
-              "expiring_soon": 0, "expired": 0, "unassigned": 0}
+    """ภาพรวมทั้งทีม + แยกตาม AE — นับด้วย lifecycle() ตัวเดียวกับแชท/ตาราง/แจ้งเตือน."""
+    totals = {"customers": 0, "total_value": 0.0, "unassigned": 0, "status_stale": 0,
+              **{s: 0 for s in STAGES}}
     by_ae: Dict[str, Dict] = {}
-    by_status: Dict[str, int] = {}
 
-    for c in customers:
+    for c in db.query(Customer).all():
+        lc = lifecycle(c)
+        stage = lc["stage"]
+        value = c.latest_value or 0
         totals["customers"] += 1
-        totals["total_value"] += c.latest_value or 0
-        if not c.ae_ir:
-            totals["unassigned"] += 1
-        st = (c.contract_status or "ไม่ระบุ").strip().title()
-        by_status[st] = by_status.get(st, 0) + 1
-
-        es = expiry_state(c.expiry_date)["state"]
-        dead = (c.contract_status or "").strip().lower() == "cancelled"
-        if es == "active":
-            totals["active"] += 1
-        elif es == "expiring_soon" and not dead:
-            totals["expiring_soon"] += 1
-        elif es == "expired" and not dead:
-            totals["expired"] += 1
+        totals[stage] += 1
+        if stage in PIPELINE_STAGES:
+            totals["total_value"] += value
+            if not c.ae_ir:
+                totals["unassigned"] += 1
+        if lc["status_stale"]:
+            totals["status_stale"] += 1
 
         ae = c.ae_ir or "ไม่ระบุ"
-        a = by_ae.setdefault(ae, {"ae": ae, "customers": 0, "active": 0,
-                                  "expiring_soon": 0, "expired": 0, "total_value": 0.0})
+        a = by_ae.setdefault(ae, {"ae": ae, "customers": 0, "total_value": 0.0, **{s: 0 for s in STAGES}})
         a["customers"] += 1
-        a["total_value"] += c.latest_value or 0
-        if es == "active":
-            a["active"] += 1
-        elif es == "expiring_soon" and not dead:
-            a["expiring_soon"] += 1
-        elif es == "expired" and not dead:
-            a["expired"] += 1
+        a[stage] += 1
+        if stage in PIPELINE_STAGES:
+            a["total_value"] += value
 
     return {
+        "stages": STAGES,
+        "threshold_days": EXPIRING_THRESHOLD_DAYS,
         "totals": totals,
         "by_ae": sorted(by_ae.values(), key=lambda x: x["customers"], reverse=True),
-        "by_status": [{"status": k, "count": v} for k, v in sorted(by_status.items(), key=lambda x: -x[1])],
     }
 
 
@@ -95,6 +117,10 @@ def customer_full(c: Customer) -> Dict:
     """ข้อมูลเต็มของลูกค้า 1 ราย."""
     d = customer_summary(c)
     d.update({
+        # raw column names too — the edit form binds to these
+        "contract_type": c.contract_type,
+        "contract_status": c.contract_status,
+        "latest_value": c.latest_value,
         "company_name_th": c.company_name_th,
         "company_name_en": c.company_name_en,
         "period_months": c.period_months,

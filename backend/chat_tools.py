@@ -14,7 +14,7 @@ import radar
 from memory_manager import CustomerMemoryManager
 from models import Customer, FollowUp
 from notifications import compute_notifications, get_ae_emails
-from services import customer_full, customer_summary
+from services import STAGES, customer_full, customer_summary, lifecycle
 
 # ── OpenAI tool schema ───────────────────────────────────────────────────────
 TOOLS = [
@@ -50,16 +50,16 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "list_customers",
-            "description": ("รายชื่อลูกค้าตามเงื่อนไข — กรองตาม AE ผู้ดูแล และ/หรือ สถานะสัญญา. "
+            "description": ("รายชื่อลูกค้าตามเงื่อนไข — กรองตาม AE ผู้ดูแล และ/หรือ stage. "
                             "ใช้ตอบ 'ลูกค้าของ Maprang มีใครบ้าง', 'ลูกค้า Active ของฉัน', 'ลูกค้าที่หมดอายุแล้วมีใครบ้าง'. "
                             "(ถ้าถามแค่จำนวน/มูลค่ารวม ใช้ aggregate แทน)"),
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "ae": {"type": "string", "description": "ชื่อ AE-IR เช่น Maprang (ไม่ระบุ = ทุกคน)"},
-                    "status": {"type": "string", "description": "สถานะสัญญา เช่น Active, Expired, Cancelled (optional)"},
-                    "expiry_state": {"type": "string", "enum": ["active", "expiring_soon", "expired"],
-                                     "description": "กรองตามสถานะวันหมดอายุจริง (คำนวณจากวันนี้) — optional"},
+                    "ae": {"type": "string", "description": "ชื่อ AE-IR เช่น Maprang (ไม่ระบุ = ทุกคน, 'ไม่ระบุ' = ยังไม่มีคนดูแล)"},
+                    "stage": {"type": "string", "enum": list(STAGES),
+                              "description": "active=ใช้งานอยู่, expiring_soon=ใกล้หมด, expired=หมดอายุยังไม่ต่อ, cancelled=ยกเลิก, pending=กำลังดำเนินการ, unknown=ไม่มีวันหมด"},
+                    "status_stale_only": {"type": "boolean", "description": "true = เฉพาะรายที่ในระบบยังเขียน Active แต่หมดอายุแล้ว (ต้องอัปเดต/ตามต่อ)"},
                     "limit": {"type": "integer", "description": "จำนวนสูงสุด (default 30)"},
                 },
             },
@@ -120,14 +120,15 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "aggregate",
-            "description": "นับจำนวนหรือรวม/เฉลี่ยมูลค่าสัญญา แบ่งกลุ่มตามมิติที่เลือก. ใช้ตอบคำถามสถิติ เช่น 'ลูกค้าของ Maprang active กี่ราย', 'รวมมูลค่าสัญญาแต่ละ AE'",
+            "description": ("นับจำนวนหรือรวม/เฉลี่ยมูลค่าสัญญา (ต่อปี) แบ่งกลุ่มตามมิติที่เลือก — ใช้ stage ชุดเดียวกับหน้า Dashboard. "
+                            "ใช้ตอบ 'ลูกค้าของ Maprang active กี่ราย', 'รวมมูลค่าสัญญาแต่ละ AE', 'แต่ละสถานะมีกี่ราย'"),
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "group_by": {"type": "string", "enum": ["ae", "status", "industry", "market", "contract_type"]},
+                    "group_by": {"type": "string", "enum": ["stage", "ae", "industry", "market", "contract_type", "grade"]},
                     "metric": {"type": "string", "enum": ["count", "sum_value", "avg_value"]},
                     "filter_ae": {"type": "string", "description": "กรองเฉพาะ AE คนนี้ (optional)"},
-                    "filter_status": {"type": "string", "description": "กรองเฉพาะสถานะ เช่น Active/Expired/Cancelled (optional)"},
+                    "filter_stage": {"type": "string", "enum": list(STAGES), "description": "กรองเฉพาะ stage (optional)"},
                 },
                 "required": ["group_by", "metric"],
             },
@@ -147,6 +148,17 @@ TOOLS = [
                 },
                 "required": ["note"],
             },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "portfolio_overview",
+            "description": ("ภาพรวมพอร์ตทั้งทีม (ตัวเลขชุดเดียวกับหน้า Dashboard): จำนวนตาม stage, มูลค่าสัญญาในมือ, "
+                            "มูลค่าที่ครบกำหนดใน 0-30/31-60/61-90 วัน, รายที่หลุดใน 90 วันที่ผ่านมา, รายที่สถานะในระบบค้าง, "
+                            "และภาระของ AE แต่ละคน. ใช้ตอบคำถามผู้จัดการ เช่น 'ภาพรวมทีมเป็นยังไง', "
+                            "'เดือนหน้าจะหลุดเท่าไร', 'ใครงานหนักสุด', 'มีอะไรต้องรีบจัดการ'"),
+            "parameters": {"type": "object", "properties": {}},
         },
     },
     {
@@ -178,12 +190,13 @@ TOOLS = [
     },
 ]
 
-_GROUP_COL = {
-    "ae": Customer.ae_ir,
-    "status": Customer.contract_status,
-    "industry": Customer.industry,
-    "market": Customer.market,
-    "contract_type": Customer.contract_type,
+_GROUP_KEY = {
+    "ae": lambda c, lc: c.ae_ir,
+    "stage": lambda c, lc: lc["stage_label"],
+    "industry": lambda c, lc: c.industry,
+    "market": lambda c, lc: c.market,
+    "contract_type": lambda c, lc: c.contract_type,
+    "grade": lambda c, lc: c.grade,
 }
 
 
@@ -252,7 +265,32 @@ def _get_customer(db: Session, account: str) -> Optional[Dict]:
     facts = CustomerMemoryManager.list_facts(db, c.account)
     if facts:
         d["team_memory"] = facts  # ความจำที่ทีมเคยบันทึกไว้ — ใช้ตอบเสริมได้
+    open_tasks = (db.query(FollowUp).filter(FollowUp.account == c.account, FollowUp.done == False)  # noqa: E712
+                  .order_by(FollowUp.due_date.is_(None), FollowUp.due_date.asc()).all())
+    if open_tasks:
+        d["open_followups"] = [{"id": f.id, "note": f.note, "created_by": f.created_by,
+                                "due": f.due_date.strftime("%Y-%m-%d %H:%M") if f.due_date else None}
+                               for f in open_tasks]
     return d
+
+
+def _portfolio_overview(db: Session) -> Dict:
+    from services import dashboard_data
+    d = dashboard_data(db)
+    o = radar.renewal_outlook(db, limit=5)
+    by_ae = [{k: r[k] for k in ("ae", "active", "expiring_soon", "expired", "total_value")}
+             for r in d["by_ae"] if r["active"] + r["expiring_soon"] + r["expired"]]
+    keep = ("account", "company_name", "ae_ir", "value", "days_to_expiry")
+    lo, buckets = 0, []
+    for b in o["buckets"]:  # buckets don't overlap — say so, and give the running total
+        buckets.append({"range_days": f"{lo}-{b['within']}", "count": b["count"], "value": b["value"]})
+        lo = b["within"] + 1
+    return {"stages": d["stages"], "totals": d["totals"], "by_ae": by_ae,
+            "due_next_90_days_total": {"count": sum(b["count"] for b in buckets), "value": sum(b["value"] for b in buckets)},
+            "due_by_range": buckets, "call_first": [{k: u[k] for k in keep} | {"risk": u["risk_level"]} for u in o["upcoming"]],
+            "lapsed_90d": {"count": o["lapsed_total"], "value": o["lapsed_value"],
+                           "top": [{k: u[k] for k in keep} for u in o["lapsed"]]},
+            "note": "total_value = มูลค่าต่อปีของ stage active+expiring_soon+expired (ไม่นับยกเลิก)"}
 
 
 def _list_team(db: Session) -> List[Dict]:
@@ -283,20 +321,27 @@ def _list_expiring(db: Session, within_days: int = 60, ae: Optional[str] = None)
     return compute_notifications(db, ae=ae, threshold_days=within_days)
 
 
-def _list_customers(db: Session, ae: Optional[str] = None, status: Optional[str] = None,
-                    expiry_state_filter: Optional[str] = None, limit: int = 30) -> Dict:
-    q = db.query(Customer)
-    if ae:
-        q = q.filter(Customer.ae_ir.ilike(f"%{ae.strip()}%"))
-    if status:
-        q = q.filter(func.lower(Customer.contract_status) == status.strip().lower())
+def _ae_filter(q, ae: Optional[str]):
+    if not ae:
+        return q
+    if ae.strip() == "ไม่ระบุ":
+        return q.filter(Customer.ae_ir.is_(None))
+    return q.filter(Customer.ae_ir.ilike(f"%{ae.strip()}%"))
+
+
+def _list_customers(db: Session, ae: Optional[str] = None, stage: Optional[str] = None,
+                    stale_only: bool = False, limit: int = 30) -> Dict:
+    q = _ae_filter(db.query(Customer), ae)
     rows = q.order_by(Customer.expiry_date.is_(None), Customer.expiry_date.asc()).all()
     items = [customer_summary(c) for c in rows]
-    if expiry_state_filter:
-        items = [i for i in items if i["expiry_state"] == expiry_state_filter]
+    if stage:
+        items = [i for i in items if i["stage"] == stage]
+    if stale_only:
+        items = [i for i in items if i["status_stale"]]
     total = len(items)
     limit = max(1, min(int(limit or 30), 100))
-    return {"total": total, "showing": min(total, limit), "items": items[:limit]}
+    return {"total": total, "total_value": round(sum(i["value"] or 0 for i in items)),
+            "showing": min(total, limit), "items": items[:limit]}
 
 
 def _sales_opportunities(db: Session, mode: str, ae: Optional[str] = None, limit: int = 10) -> Dict:
@@ -347,30 +392,30 @@ def _manage_followup(db: Session, followup_id: int, action: str,
 
 
 def _aggregate(db: Session, group_by: str, metric: str,
-               filter_ae: Optional[str] = None, filter_status: Optional[str] = None) -> List[Dict]:
-    col = _GROUP_COL.get(group_by)
-    if col is None:
+               filter_ae: Optional[str] = None, filter_stage: Optional[str] = None) -> List[Dict]:
+    key_of = _GROUP_KEY.get(group_by)
+    if key_of is None:
         return [{"error": f"invalid group_by: {group_by}"}]
-    if metric == "count":
-        agg = func.count()
-    elif metric == "sum_value":
-        agg = func.sum(Customer.latest_value)
-    elif metric == "avg_value":
-        agg = func.avg(Customer.latest_value)
-    else:
+    if metric not in ("count", "sum_value", "avg_value"):
         return [{"error": f"invalid metric: {metric}"}]
 
-    q = db.query(col, agg)
-    if filter_ae:
-        q = q.filter(Customer.ae_ir == filter_ae)
-    if filter_status:
-        q = q.filter(func.lower(Customer.contract_status) == filter_status.strip().lower())
-    q = q.group_by(col).order_by(agg.desc())
+    groups: Dict[str, List[float]] = {}
+    for c in _ae_filter(db.query(Customer), filter_ae).all():
+        lc = lifecycle(c)
+        if filter_stage and lc["stage"] != filter_stage:
+            continue
+        groups.setdefault(key_of(c, lc) or "ไม่ระบุ", []).append(c.latest_value or 0)
+
     out = []
-    for key, value in q.all():
-        if metric != "count" and value is not None:
-            value = round(float(value), 2)
-        out.append({"group": key or "ไม่ระบุ", metric: value})
+    for key, values in groups.items():
+        if metric == "count":
+            v = len(values)
+        elif metric == "sum_value":
+            v = round(sum(values), 2)
+        else:
+            v = round(sum(values) / len(values), 2)
+        out.append({"group": key, metric: v})
+    out.sort(key=lambda r: r[metric], reverse=True)
     return out
 
 
@@ -407,8 +452,8 @@ def run_tool(name: str, args: Dict, db: Session, ctx: Optional[Dict] = None):
     if name == "list_expiring":
         return _list_expiring(db, args.get("within_days", 60), args.get("ae"))
     if name == "list_customers":
-        return _list_customers(db, args.get("ae"), args.get("status"),
-                               args.get("expiry_state"), args.get("limit", 30))
+        return _list_customers(db, args.get("ae"), args.get("stage"),
+                               bool(args.get("status_stale_only")), args.get("limit", 30))
     if name == "sales_opportunities":
         return _sales_opportunities(db, args.get("mode", ""), args.get("ae"),
                                     args.get("limit", 10))
@@ -417,12 +462,14 @@ def run_tool(name: str, args: Dict, db: Session, ctx: Optional[Dict] = None):
                                 args.get("new_when"))
     if name == "aggregate":
         return _aggregate(db, args["group_by"], args["metric"],
-                          args.get("filter_ae"), args.get("filter_status"))
+                          args.get("filter_ae"), args.get("filter_stage"))
     if name == "add_followup":
         return _add_followup(db, args.get("note", ""), args.get("account"), args.get("when"),
                              created_by=ctx.get("created_by"), creator_email=ctx.get("creator_email"))
     if name == "list_team":
         return _list_team(db)
+    if name == "portfolio_overview":
+        return _portfolio_overview(db)
     if name == "remember_about_customer":
         return _remember_about_customer(db, args.get("account", ""), args.get("fact", ""),
                                         created_by=ctx.get("created_by"))

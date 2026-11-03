@@ -12,7 +12,7 @@ from typing import Dict, List, Optional
 from sqlalchemy.orm import Session
 
 from models import Customer
-from services import EXPIRING_THRESHOLD_DAYS, customer_summary, expiry_state, now_bkk
+from services import EXPIRING_THRESHOLD_DAYS, customer_summary, expiry_state, lifecycle, now_bkk
 
 # ── AE → email mapping (แก้ได้ผ่านไฟล์หรือ UI) ───────────────────────────────
 AE_EMAIL_FILE = Path(__file__).resolve().parent / "ae_emails.json"
@@ -47,22 +47,18 @@ def _load_user_smtp() -> Dict[str, Dict]:
     return {}
 
 
-# สัญญาที่ยกเลิกไปแล้ว = ลูกค้าเลิกใช้ ไม่ใช่งานต่ออายุ → ไม่นับเป็นการแจ้งเตือน
-_DEAD_STATUSES = {"cancelled"}
-
-
 def compute_notifications(db: Session, ae: Optional[str] = None,
                           threshold_days: int = EXPIRING_THRESHOLD_DAYS) -> List[Dict]:
-    """สัญญาที่ใกล้หมดอายุ (ยังไม่เลย) — ตัด Cancelled และที่หมดแล้วออก. เรียงด่วนสุดก่อน."""
+    """สัญญาที่หมดภายใน threshold_days วัน (ยังไม่เลย, ไม่นับที่ยกเลิก). เรียงด่วนสุดก่อน."""
     q = db.query(Customer).filter(Customer.expiry_date.isnot(None))
     if ae:
         q = q.filter(Customer.ae_ir == ae)
     items = []
     for c in q.all():
-        if (c.contract_status or "").strip().lower() in _DEAD_STATUSES:
+        if lifecycle(c)["stage"] == "cancelled":
             continue
-        es = expiry_state(c.expiry_date, threshold_days)
-        if es["state"] == "expiring_soon":
+        days = expiry_state(c.expiry_date)["days_to_expiry"]
+        if 0 <= days <= threshold_days:
             items.append(customer_summary(c))
     items.sort(key=lambda r: (r["days_to_expiry"] if r["days_to_expiry"] is not None else 9999))
     return items

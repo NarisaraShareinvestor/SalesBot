@@ -49,6 +49,11 @@ ssh -i ~/.ssh/line_inbox_deploy root@187.127.218.42 'cd /opt/salesbot && ./deplo
 The script: builds + starts only `salesbot` → gets the cert via webroot (first time only) →
 installs the vhost → `nginx -t` (rolls back the vhost if it fails) → reload.
 
+Login: while `AZURE_*` is empty the page asks for company email + name + the **team password**.
+deploy.sh creates it on first run (`TEAM_PASSWORD` in `data/.env`); read it with
+`ssh -i ~/.ssh/line_inbox_deploy root@187.127.218.42 cat /root/salesbot-team-password.txt`.
+No nginx basic auth — the app checks a signed session cookie on every `/api/*`.
+
 ## 5. Verify
 ```bash
 curl -I http://127.0.0.1:8001/      # on the VPS: HTTP 200
