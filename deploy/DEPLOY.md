@@ -35,11 +35,9 @@ From your Mac:
 ```bash
 cd ~/Projects/SalesBot
 K="-i $HOME/.ssh/line_inbox_deploy"; H=root@187.127.218.42:/opt/salesbot/data
-# fill the real values (OpenAI, Azure, ADMIN_TOKEN, SMTP) — see .env.production.example
+# fill the real values (OpenAI, LOGIN_PASSWORD, ADMIN_TOKEN) — see .env.production.example
 scp $K .env                    $H/.env
 scp $K backend/salesbot.db     $H/salesbot.db
-scp $K backend/ae_emails.json  $H/ae_emails.json
-scp $K backend/user_smtp.json  $H/user_smtp.json
 ```
 
 ## 4. Deploy
@@ -49,17 +47,14 @@ ssh -i ~/.ssh/line_inbox_deploy root@187.127.218.42 'cd /opt/salesbot && ./deplo
 The script: builds + starts only `salesbot` → gets the cert via webroot (first time only) →
 installs the vhost → `nginx -t` (rolls back the vhost if it fails) → reload.
 
-Login: while `AZURE_*` is empty the page asks for company email + name + the **team password**.
-deploy.sh creates it on first run (`TEAM_PASSWORD` in `data/.env`); read it with
-`ssh -i ~/.ssh/line_inbox_deploy root@187.127.218.42 cat /root/salesbot-team-password.txt`.
-No nginx basic auth — the app checks a signed session cookie on every `/api/*`.
+Login: one shared account — `LOGIN_USER` (default `admin`) + `LOGIN_PASSWORD` in `data/.env`.
+The app checks a signed session cookie on every `/api/*` (no nginx basic auth).
 
 ## 5. Verify
 ```bash
 curl -I http://127.0.0.1:8001/      # on the VPS: HTTP 200
 ```
-Then open **https://salesbot.ohmai.me**. Microsoft login needs
-`https://salesbot.ohmai.me/auth/microsoft/callback` as a redirect URI in the Azure app (unchanged).
+Then open **https://salesbot.ohmai.me**.
 
 ## Updating later
 **Frontend only** (`frontend/` is bind-mounted → live after pull):

@@ -3,7 +3,7 @@
 ผู้ช่วย AI สำหรับทีม IR Sales ของ ShareInvestor — แชทถามข้อมูลลูกค้า/สัญญาแบบภาษาธรรมชาติ,
 ดู/เพิ่ม/แก้ข้อมูล, และแจ้งเตือนสัญญาใกล้หมดอายุ ฉลาดด้วย **function-calling** บนฐานข้อมูลจริง
 
-หน้าตา Warm Glass (ชุดเดียวกับ AI Monitor) อยู่ในไฟล์เดียว `frontend/static/glass.css` — ลบบรรทัด `<link>` ก็กลับเป็นแบบเดิม
+หน้าตา White Glass (กระจกโทนขาว ใช้งานทางการ) อยู่ในไฟล์เดียว `frontend/static/glass.css` — ลบบรรทัด `<link>` ก็กลับเป็นแบบเดิม
 Live: https://salesbot.ohmai.me (VPS 187.127.218.42 — ดู `deploy/DEPLOY.md`)
 
 ## สถานะลูกค้า (stage) — นิยามเดียวทั้งระบบ
@@ -34,25 +34,23 @@ Live: https://salesbot.ohmai.me (VPS 187.127.218.42 — ดู `deploy/DEPLOY.md
 3. **Data** — ตารางลูกค้าเรียงตามความด่วน (ใกล้หมด → เพิ่งหลุด → ใช้งานอยู่ → อื่น ๆ), กรองตาม stage, Export CSV,
    ฟอร์มแก้ไข + งานติดตาม + ความจำทีมต่อลูกค้า
 4. **เรดาร์โอกาสขาย** — เสี่ยงหลุด / ดึงกลับ / อัปเซล พร้อมร่างข้อความ
-5. **Notifications** — งานติดตาม + สัญญาใกล้หมด, ตัวกรอง, ปฏิทิน
+5. **Notifications** — งานติดตาม + สัญญาใกล้หมด, ตัวกรอง
 
 ## Login
-ทุก `/api/*` ต้องมี session cookie ที่เซ็นแล้ว (`backend/auth.py`, HttpOnly, 30 วัน) — ตัวตนในแชทมาจาก session ปลอมไม่ได้
-- ตั้ง `AZURE_*` แล้ว → ปุ่ม Microsoft Teams อย่างเดียว
-- ยังไม่ตั้ง → อีเมล @shareinvestor.com + ชื่อ + `TEAM_PASSWORD` (ผิดเกิน 8 ครั้ง/5 นาที ถูกพัก)
+บัญชีเดียวของทีม: `LOGIN_USER` (default `admin`) + `LOGIN_PASSWORD` ใน `.env` · ทุก `/api/*` ต้องมี session cookie
+ที่เซ็นแล้ว (`backend/auth.py`, HttpOnly, 30 วัน) · ใส่ผิดเกิน 8 ครั้ง/5 นาที ถูกพัก · งานติดตามเห็นทั้งหมด (ไม่มีแบ่งส่วนตัว/แชร์)
 
 ## โครงสร้าง
 ```
 backend/
   main.py            FastAPI: routes, middleware login, chat loop, briefing
-  auth.py            session cookie + team password
+  auth.py            session cookie + บัญชีเดียวของทีม
   services.py        lifecycle() / stage + serialize ลูกค้า + dashboard_data
   radar.py           retain / winback / upsell / renewal_outlook (Dashboard)
   chat_tools.py      นิยาม tool + executor
-  notifications.py   ใกล้หมด + ส่งอีเมลสรุป
+  notifications.py   สัญญาใกล้หมด (กระดิ่ง + หน้า Notifications)
   memory_manager.py  ความจำผู้ใช้ / ความจำทีมต่อลูกค้า
   improve.py         log ปัญหาแชท + บทเรียน (หน้า Admin)
-  microsoft_teams.py OAuth + ปฏิทิน Teams
   import_data.py     Excel → salesbot.db (upsert)
 frontend/index.html  SPA · frontend/static/ glass.css + bg.jpg
 tests/               ความสอดคล้องของตัวเลข + login
@@ -60,7 +58,7 @@ tests/               ความสอดคล้องของตัวเ�
 
 ## รันในเครื่อง
 ```bash
-cp .env.example .env        # ใส่ OPENAI_API_KEY, TEAM_PASSWORD
+cp .env.example .env        # ใส่ OPENAI_API_KEY, LOGIN_PASSWORD
 ./run.sh                    # setup venv + seed DB + เปิด http://localhost:8000
 ```
 
@@ -75,6 +73,5 @@ Import จาก `Data/` (ไม่ขึ้น git) — `IR-Agreement-Status 20
 + `20260512-PR-All-IR-List.xlsx` (ผู้ติดต่อ IR) · รัน `import_data.py` ซ้ำได้ (upsert)
 
 ## หมายเหตุ
-- อีเมล: ตั้ง `SMTP_*` — ถ้ายังไม่ตั้ง ปุ่มส่งจะคืนพรีวิวแทน
 - เกณฑ์ "ใกล้หมด": `EXPIRING_THRESHOLD_DAYS` (default 60)
 - SQLite เปิด WAL + connection ต่อ thread (อย่ากลับไปใช้ StaticPool — query ชนกันจน "malformed")

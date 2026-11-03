@@ -5,15 +5,12 @@
 จนกว่าวิศวกร (narisara.pa@shareinvestor.com) จะกดอนุมัติใน dashboard.
 """
 import os
-import smtplib
 from datetime import datetime, timedelta
-from email.mime.text import MIMEText
 
 from sqlalchemy.orm import Session
 
 from models import ImprovementReport, IssueLog, LearnedGuidance
 
-ADMIN_EMAIL = "narisara.pa@shareinvestor.com"
 BANGKOK_OFFSET = timedelta(hours=7)
 GUIDANCE_MAX_ACTIVE = 10  # กัน prompt บวม
 
@@ -64,33 +61,6 @@ def get_active_guidance(db: Session) -> list:
         return []
 
 
-# ── Email (best-effort — Microsoft 365 อาจบล็อก, ห้ามทำให้ job ล่ม) ───────────
-def _send_report_email(report: ImprovementReport) -> bool:
-    host = os.getenv("SMTP_HOST")
-    user = os.getenv("SMTP_USER")
-    pwd = os.getenv("SMTP_PASS")
-    if not (host and user and pwd):
-        return False
-    try:
-        body = (f"SalesBot — รายงานปรับปรุงระบบ {report.report_date}\n\n"
-                f"บทสนทนาทั้งหมด: {report.total_chats} | flagged: {report.flagged_count}\n\n"
-                f"== สรุป ==\n{report.summary or '-'}\n\n"
-                f"== สิ่งที่วิศวกรควรแก้ ==\n{report.engineer_actions or '-'}\n\n"
-                f"ดูรายละเอียด + อนุมัติ guidance ที่: https://salesbot.ohmai.me (เมนู Admin)")
-        msg = MIMEText(body, "plain", "utf-8")
-        msg["Subject"] = f"[SalesBot] รายงานปรับปรุงระบบ {report.report_date}"
-        msg["From"] = os.getenv("SMTP_FROM", user)
-        msg["To"] = ADMIN_EMAIL
-        port = int(os.getenv("SMTP_PORT", "587"))
-        with smtplib.SMTP(host, port, timeout=20) as s:
-            s.starttls()
-            s.login(user, pwd)
-            s.send_message(msg)
-        return True
-    except Exception:
-        return False
-
-
 # ── Nightly analysis ─────────────────────────────────────────────────────────
 def _llm():
     from openai import OpenAI
@@ -120,7 +90,6 @@ def run_nightly(db: Session, force: bool = False) -> dict:
     if not flagged:
         summary = f"ช่วง 24 ชม.ที่ผ่านมา มีบทสนทนา {total} ครั้ง ไม่พบเคสที่บอทตอบไม่ได้ — ระบบทำงานปกติ"
         report = _save_report(db, existing, date_str, total, 0, summary, [], "ไม่มีสิ่งที่ต้องแก้")
-        report.emailed = _send_report_email(report)
         db.commit()
         return _report_dict(report, proposed=0)
 
@@ -175,7 +144,6 @@ def run_nightly(db: Session, force: bool = False) -> dict:
         proposed += 1
     db.commit()
 
-    report.emailed = _send_report_email(report)
     db.commit()
     return _report_dict(report, proposed=proposed)
 

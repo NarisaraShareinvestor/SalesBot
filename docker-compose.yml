@@ -8,13 +8,11 @@ services:
     container_name: salesbot
     restart: always
     env_file:
-      - ./data/.env            # OPENAI_*, AZURE_*, REDIRECT_URI, ADMIN_TOKEN, SMTP_*, EXPIRING_THRESHOLD_DAYS
+      - ./data/.env            # OPENAI_*, LOGIN_USER/LOGIN_PASSWORD, ADMIN_TOKEN, EXPIRING_THRESHOLD_DAYS
     environment:
       DATABASE_URL: sqlite:////data/salesbot.db
     volumes:
       - ./data:/data                                       # salesbot.db (+ wal/journal) persists
-      - ./data/ae_emails.json:/app/backend/ae_emails.json  # AE→email map persists
-      - ./data/user_smtp.json:/app/backend/user_smtp.json  # per-user SMTP persists
       - ./Data:/app/Data                                   # Excel import files (readonly)
       - ./frontend:/app/frontend                           # SPA — edits picked up without rebuild
     ports:

@@ -13,8 +13,7 @@ echo "==> SalesBot deploy in $APP_DIR"
 # 1) runtime data dir (persists across rebuilds; NOT in git)
 mkdir -p data
 [ -f data/.env ]             || { echo "!! data/.env missing — create it from .env.production.example first"; exit 1; }
-[ -f data/ae_emails.json ]   || echo '{}' > data/ae_emails.json
-[ -f data/user_smtp.json ]   || echo '{}' > data/user_smtp.json
+grep -q '^LOGIN_PASSWORD=.' data/.env || { echo "!! set LOGIN_PASSWORD in data/.env (LOGIN_USER defaults to admin)"; exit 1; }
 # data/salesbot.db should be scp'd in beforehand; create empty if absent (app will init tables)
 [ -f data/salesbot.db ]      || { echo "(no data/salesbot.db — starting with an empty DB)"; touch data/salesbot.db; }
 
@@ -36,17 +35,7 @@ EOF
     || { rm -f "$VHOST"; nginx -t && systemctl reload nginx; echo "!! certbot failed"; exit 1; }
 fi
 
-# 4) team password for the login form (only used while AZURE_* is not set) — first time only
-if ! grep -q '^TEAM_PASSWORD=' data/.env; then
-  PW="$(openssl rand -base64 24 | tr -d '/+=' | cut -c1-16)"
-  printf '\nTEAM_PASSWORD=%s\n' "$PW" >> data/.env
-  printf 'SalesBot team password: %s\n' "$PW" > /root/salesbot-team-password.txt
-  chmod 600 /root/salesbot-team-password.txt
-  echo "==> team password created — in /root/salesbot-team-password.txt"
-  docker compose up -d --force-recreate salesbot
-fi
-
-# 5) real vhost — roll back if nginx rejects it so the other sites never go down
+# 4) real vhost — roll back if nginx rejects it so the other sites never go down
 echo "==> installing vhost"
 BAK="/root/zz-${DOMAIN}.conf.bak"
 rm -f "$BAK"; [ -f "$VHOST" ] && cp "$VHOST" "$BAK"

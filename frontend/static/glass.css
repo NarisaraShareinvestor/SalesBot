@@ -79,8 +79,9 @@ body::after { inset: 0; background: var(--photo-veil); }
 .nav a.active .navcount, .chip-f.active .n { background: rgba(255, 255, 255, .2); color: var(--on-accent); }
 .brand .mark { background: var(--accent); color: var(--on-accent); }
 input, select, textarea, .search input, .chat-input input, .fld input, .fld select, .fu-add input, .sched-remind select {
-  background-color: var(--plane); color: var(--ink); border-color: var(--line);
+  background-color: var(--plane); color: var(--ink); border-color: rgba(31, 38, 48, .18);
 }
+.modal .box input, .modal .box select, .modal .box textarea { background-color: #f7f8fa; }
 input:focus, select:focus, textarea:focus { border-color: var(--ink2); }
 :focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 .who .sel { border-color: var(--line); background: var(--plane); }

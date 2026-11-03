@@ -28,10 +28,9 @@ from database import Base, engine, get_db
 from memory_manager import CustomerMemoryManager, UserMemoryManager
 import improve
 import radar
-from models import Customer, FollowUp, ImprovementReport, IssueLog, LearnedGuidance, MemoryType, TeamMember, UserCredential
-from notifications import get_ae_emails, notification_summary, send_expiry_digest, set_ae_emails
+from models import Customer, FollowUp, ImprovementReport, IssueLog, LearnedGuidance, MemoryType, TeamMember
+from notifications import notification_summary
 from services import customer_full, customer_summary, dashboard_data, lifecycle
-from microsoft_teams import get_oauth_url, exchange_code_for_token, extract_identity, store_credential
 
 load_dotenv()
 Base.metadata.create_all(bind=engine)
@@ -81,91 +80,6 @@ def _migrate_db():
             conn.commit()
 
 _migrate_db()
-
-# ── APScheduler for 30-min reminders ───────────────────────────────────────────
-from apscheduler.schedulers.background import BackgroundScheduler
-from datetime import timedelta
-from microsoft_teams import create_calendar_event
-import asyncio
-
-scheduler = BackgroundScheduler()
-
-
-def _find_credential_for_task(db, task) -> Optional[UserCredential]:
-    """หา Microsoft credential ของเจ้าของงาน — จาก creator_email ก่อน, fallback ชื่อ/nickname."""
-    if task.creator_email:
-        c = db.query(UserCredential).filter(UserCredential.email == task.creator_email).first()
-        if c:
-            return c
-    if task.created_by:
-        c = db.query(UserCredential).filter(UserCredential.name == task.created_by).first()
-        if c:
-            return c
-        from sqlalchemy import func as _f
-        tm = db.query(TeamMember).filter(
-            _f.lower(TeamMember.nickname) == task.created_by.strip().lower()).first()
-        if tm:
-            return db.query(UserCredential).filter(UserCredential.email == tm.email).first()
-    return None
-
-
-def send_30min_reminders_sync():
-    """งานที่ถึงกำหนดใน 30 นาที → ลงปฏิทิน Outlook/Teams ของเจ้าของงาน (ครั้งเดียวต่องาน).
-
-    หมายเหตุ: due_date เก็บเป็นเวลาไทย (naive) — ต้องเทียบกับ now_bkk() ไม่ใช่ utcnow
-    (container เป็น UTC ไม่งั้นเตือนช้า 7 ชม.)"""
-    from database import SessionLocal
-    from services import now_bkk
-    from microsoft_teams import get_valid_access_token, create_calendar_event_sync
-    db = SessionLocal()
-    try:
-        now = now_bkk()
-        in_30min = now + timedelta(minutes=30)
-
-        pending_tasks = db.query(FollowUp).filter(
-            FollowUp.done == False,  # noqa: E712
-            FollowUp.reminded == False,  # noqa: E712
-            FollowUp.due_date.isnot(None),
-            FollowUp.due_date >= now,
-            FollowUp.due_date <= in_30min,
-        ).all()
-
-        for task in pending_tasks:
-            try:
-                cred = _find_credential_for_task(db, task)
-                if cred:
-                    token = get_valid_access_token(db, cred)
-                    if token:
-                        end_dt = task.due_date + timedelta(minutes=30)
-                        create_calendar_event_sync(
-                            token, task.note, task.due_date, end_dt,
-                            f"Account: {task.account or 'General'} — จาก SalesBot")
-                # ติ๊กว่าเตือนแล้วเสมอ (แม้ไม่มี credential) — กันวนยิงซ้ำทุก 5 นาที
-                task.reminded = True
-                db.commit()
-            except Exception as e:
-                db.rollback()
-                print(f"Reminder error for task {task.id}: {e}")
-    except Exception as e:
-        print(f"Scheduled reminder error: {e}")
-    finally:
-        db.close()
-
-
-def start_scheduler():
-    """Start background scheduler."""
-    if not scheduler.running:
-        scheduler.add_job(
-            send_30min_reminders_sync,
-            'interval',
-            minutes=5,  # Check every 5 minutes
-            id='send_reminders',
-            replace_existing=True
-        )
-        scheduler.start()
-
-
-start_scheduler()
 
 FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o")
@@ -505,7 +419,6 @@ class FollowUpIn(BaseModel):
     note: str
     due_date: Optional[str] = None
     created_by: Optional[str] = None
-    notify_email: Optional[str] = None  # ถ้าใส่ → ส่งนัดเข้าปฏิทินคนนี้
 
 
 class FollowUpPatch(BaseModel):
@@ -530,8 +443,7 @@ def _fu_dict(f: FollowUp) -> dict:
 def list_followups(db: Session = Depends(get_db), ae: Optional[str] = None,
                    pending: bool = True, limit: int = 100,
                    user_name: Optional[str] = None):
-    """รายการงานติดตาม. filter ตาม AE ของลูกค้าได้.
-    user_name: ถ้าระบุ จะคืนเฉพาะ is_shared=true หรือ created_by==user_name (งานส่วนตัวเห็นเฉพาะเจ้าของ)"""
+    """รายการงานติดตามทั้งหมด (บัญชีเดียวของทีม → เห็นทุกงาน). filter ตาม AE ของลูกค้าได้."""
     q = db.query(FollowUp)
     if pending:
         q = q.filter(FollowUp.done == False)  # noqa: E712
@@ -539,14 +451,6 @@ def list_followups(db: Session = Depends(get_db), ae: Optional[str] = None,
                       FollowUp.created_at.desc()).all()
     out = []
     for f in rows:
-        # visibility: ทีม (is_shared) หรือ เจ้าของ หรือ ระบุชื่อ (shared_with)
-        if user_name:
-            in_shared_with = False
-            if f.shared_with:
-                names = [n.strip().lower() for n in f.shared_with.split(",") if n.strip()]
-                in_shared_with = user_name.lower() in names
-            if not f.is_shared and f.created_by != user_name and not in_shared_with:
-                continue
         cust = db.get(Customer, f.account) if f.account else None
         cust_ae = cust.ae_ir if cust else None
         if ae and cust_ae != ae:
@@ -648,39 +552,10 @@ def get_notifications(db: Session = Depends(get_db), ae: Optional[str] = None):
     return notification_summary(db, ae=ae)
 
 
-class SendEmailIn(BaseModel):
-    to_email: Optional[str] = None
-    ae: Optional[str] = None
-    sender_email: Optional[str] = None
-
-
-@app.post("/api/notifications/send-email")
-def send_email(body: SendEmailIn, db: Session = Depends(get_db)):
-    return send_expiry_digest(db, to_email=body.to_email, ae=body.ae, sender_email=body.sender_email)
-
-
-@app.get("/api/ae-emails")
-def ae_emails_get(db: Session = Depends(get_db)):
-    """คืน mapping AE → email สำหรับทุก AE ในระบบ (ค่าว่าง = ยังไม่ได้ตั้ง)."""
-    stored = get_ae_emails()
-    aes = [r[0] for r in db.query(Customer.ae_ir).filter(Customer.ae_ir.isnot(None)).distinct().all() if r[0]]
-    return {a: stored.get(a, "") for a in sorted(aes)}
-
-
-class AeEmailsIn(BaseModel):
-    mapping: dict
-
-
-@app.put("/api/ae-emails")
-def ae_emails_set(body: AeEmailsIn):
-    return set_ae_emails(body.mapping)
-
-
-# ── Microsoft Teams OAuth ──────────────────────────────────────────────────────
-@app.get("/api/auth/config")
-def auth_config():
-    """Teams ตั้งค่าแล้ว = ปุ่ม Teams อย่างเดียว · ยังไม่ตั้ง = ฟอร์มอีเมล + รหัสทีม."""
-    return {"teams": auth.teams_enabled()}
+# ── Login (one shared team account) ─────────────────────────────────────────────
+class LoginIn(BaseModel):
+    username: str
+    password: str
 
 
 @app.get("/api/auth/me")
@@ -688,35 +563,21 @@ def auth_me(request: Request):
     user = auth.current_user(request)
     if not user:
         raise HTTPException(401, "login required")
-    return {k: user[k] for k in ("email", "name", "ae", "via")}
-
-
-class LoginIn(BaseModel):
-    email: str
-    name: str
-    ae: Optional[str] = None
-    password: str
+    return {k: user[k] for k in ("email", "name", "ae")}
 
 
 @app.post("/api/auth/login")
-def auth_login(body: LoginIn, request: Request, db: Session = Depends(get_db)):
-    """ทางเข้าสำรองตอนยังไม่มี Azure: อีเมลบริษัท + ชื่อ + รหัสทีม (TEAM_PASSWORD)."""
-    if auth.teams_enabled():
-        raise HTTPException(400, "ใช้ปุ่มเข้าด้วย Microsoft Teams")
+def auth_login(body: LoginIn, request: Request):
+    """บัญชีเดียวของทีม (LOGIN_USER / LOGIN_PASSWORD)."""
     ip = request.headers.get("x-real-ip") or (request.client.host if request.client else "?")
     if auth.too_many_attempts(ip):
         raise HTTPException(429, "ลองผิดหลายครั้ง รอ 5 นาทีแล้วลองใหม่")
-    email = body.email.strip().lower()
-    name = body.name.strip()
-    if not email.endswith(auth.ALLOWED_DOMAIN) or not name:
-        raise HTTPException(400, f"อีเมลต้องลงท้ายด้วย {auth.ALLOWED_DOMAIN} และต้องกรอกชื่อ")
-    if not auth.check_password(body.password):
+    if not auth.check_login(body.username, body.password):
         auth.record_failure(ip)
-        raise HTTPException(401, "รหัสทีมไม่ถูกต้อง")
-    ae = (body.ae or "").strip() or name.split(" ")[0]
-    add_team_member(TeamMemberIn(email=email, nickname=ae, full_name=name), db)
-    resp = JSONResponse({"email": email, "name": name, "ae": ae, "via": "password"})
-    auth.set_cookie(resp, auth.issue(email, name, ae), request)
+        raise HTTPException(401, "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง")
+    name = body.username.strip()
+    resp = JSONResponse({"email": name, "name": name, "ae": name})
+    auth.set_cookie(resp, auth.issue(name), request)
     return resp
 
 
@@ -724,49 +585,6 @@ def auth_login(body: LoginIn, request: Request, db: Session = Depends(get_db)):
 def auth_logout():
     resp = JSONResponse({"ok": True})
     resp.delete_cookie(auth.COOKIE, path="/")
-    return resp
-
-
-@app.get("/auth/microsoft/login")
-def microsoft_login():
-    """Redirect to Azure AD login."""
-    from fastapi.responses import RedirectResponse
-    return RedirectResponse(url=get_oauth_url())
-
-
-@app.get("/auth/microsoft/callback")
-async def microsoft_callback(
-    request: Request,
-    db: Session = Depends(get_db),
-    code: Optional[str] = None,
-    error: Optional[str] = None,
-    error_description: Optional[str] = None,
-):
-    """Handle OAuth callback from Azure AD."""
-    from fastapi.responses import RedirectResponse
-
-    if error:
-        return RedirectResponse(url=f"/?login=error&msg={error_description or error}")
-
-    if not code:
-        raise HTTPException(400, "Missing authorization code")
-
-    token_response = await exchange_code_for_token(code)
-    if not token_response:
-        raise HTTPException(400, "Failed to exchange code for token")
-
-    identity = extract_identity(token_response)
-    if not identity:
-        raise HTTPException(400, "Failed to get user info")
-
-    email = identity["email"]
-    name = identity["name"]
-
-    store_credential(db, email, name, token_response)
-    if email.lower().endswith(auth.ALLOWED_DOMAIN):  # shows up in the "share with" picker
-        add_team_member(TeamMemberIn(email=email, nickname=name.split(" ")[0], full_name=name), db)
-    resp = RedirectResponse(url="/?login=success")
-    auth.set_cookie(resp, auth.issue(email, name, via="teams"), request)
     return resp
 
 
@@ -832,13 +650,6 @@ def _build_system_prompt(db: Session, user_email: str, ae_name: Optional[str],
         q = db.query(FollowUp).filter(FollowUp.done == False)  # noqa: E712
         pending_tasks = []
         for f in q.order_by(FollowUp.due_date.is_(None), FollowUp.due_date.asc()).all():
-            # visibility filter (เหมือน list_followups)
-            in_sw = False
-            if f.shared_with:
-                names = [n.strip().lower() for n in f.shared_with.split(",") if n.strip()]
-                in_sw = user_name.lower() in names
-            if not f.is_shared and f.created_by != user_name and not in_sw:
-                continue
             due_str = ""
             if f.due_date:
                 d = f.due_date.date()
@@ -851,8 +662,8 @@ def _build_system_prompt(db: Session, user_email: str, ae_name: Optional[str],
                     due_str = " [พรุ่งนี้]"
                 else:
                     due_str = f" [อีก {diff} วัน — {d.strftime('%d/%m/%Y')}]"
-            vis = "ทีม" if f.is_shared else ("แชร์กับ: " + f.shared_with if f.shared_with else "ส่วนตัว")
-            pending_tasks.append(f"  • [id:{f.id}] {f.note}{due_str} ({vis})")
+            who = f" — {f.created_by}" if f.created_by else ""
+            pending_tasks.append(f"  • [id:{f.id}] {f.note}{due_str}{who}")
         if pending_tasks:
             tasks_block = "\n\n**งานค้าง (Notifications) ของผู้ใช้:**\n" + "\n".join(pending_tasks)
         else:
@@ -892,7 +703,7 @@ def _build_system_prompt(db: Session, user_email: str, ae_name: Optional[str],
 - sales_opportunities: Sales Radar จัดอันดับโอกาสขาย — retain (เสี่ยงหลุด+ใกล้หมด), winback (ดึงกลับ), upsell (เสนอ WD เพิ่ม) พร้อม score+เหตุผล
 - add_followup: บันทึกงานติดตาม/นัดหมาย "ลงตาราง" (เมื่อผู้ใช้สั่งให้ลงตาราง/บันทึก/เตือน/นัด)
 - manage_followup: ทำงานเสร็จ/เลื่อนนัด/ลบงาน — ใช้ id จากรายการงานค้าง [id:N]
-- list_team: รายชื่อทีมขาย (AE-IR) + อีเมล + จำนวนลูกค้าที่ดูแล (ใช้ตอบ "คนในทีมมีใครบ้าง", "ขออีเมลคนในทีม")
+- list_team: รายชื่อทีมขาย (AE-IR) + จำนวนลูกค้าที่ดูแล (ใช้ตอบ "คนในทีมมีใครบ้าง")
 - remember_about_customer: บันทึก insight ใหม่เกี่ยวกับลูกค้าลงสมุดความจำของทีม (ทุกคนเห็นรอบหน้า)
 
 **กฎการตอบ:**

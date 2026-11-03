@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 import radar
 from memory_manager import CustomerMemoryManager
 from models import Customer, FollowUp
-from notifications import compute_notifications, get_ae_emails
+from notifications import compute_notifications
 from services import STAGES, customer_full, customer_summary, lifecycle
 
 # ── OpenAI tool schema ───────────────────────────────────────────────────────
@@ -165,8 +165,8 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "list_team",
-            "description": ("รายชื่อทีมขาย (AE-IR) ทั้งหมดในระบบ พร้อมอีเมลที่ตั้งไว้และจำนวนลูกค้าที่ดูแล. "
-                            "ใช้ตอบ 'คนในทีมมีใครบ้าง', 'ขออีเมลคนในทีม', 'AE แต่ละคนดูแลกี่ราย'"),
+            "description": ("รายชื่อทีมขาย (AE-IR) ทั้งหมดในระบบ พร้อมจำนวนลูกค้าที่ดูแล. "
+                            "ใช้ตอบ 'คนในทีมมีใครบ้าง', 'AE แต่ละคนดูแลกี่ราย'"),
             "parameters": {"type": "object", "properties": {}},
         },
     },
@@ -294,7 +294,6 @@ def _portfolio_overview(db: Session) -> Dict:
 
 
 def _list_team(db: Session) -> List[Dict]:
-    emails = get_ae_emails()
     rows = (db.query(Customer.ae_ir, func.count())
             .filter(Customer.ae_ir.isnot(None))
             .group_by(Customer.ae_ir).all())
@@ -302,7 +301,7 @@ def _list_team(db: Session) -> List[Dict]:
     for ae, cnt in rows:
         if not ae:
             continue
-        out.append({"ae": ae, "email": emails.get(ae) or None, "customers": cnt})
+        out.append({"ae": ae, "customers": cnt})
     out.sort(key=lambda x: x["customers"], reverse=True)
     return out
 

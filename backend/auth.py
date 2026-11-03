@@ -1,8 +1,6 @@
 """Server-side sessions: a signed, HttpOnly cookie checked on every /api/* call.
 
-Two ways in:
-  - Microsoft Teams (when AZURE_* is set) — the OAuth callback issues the cookie.
-  - Team password fallback (TEAM_PASSWORD) — company email + name + the shared team password.
+One shared account for the team: LOGIN_USER (default "admin") + LOGIN_PASSWORD from the env.
 """
 import base64
 import hashlib
@@ -18,8 +16,7 @@ from fastapi import Request
 
 COOKIE = "sb_session"
 MAX_AGE = 30 * 24 * 3600
-ALLOWED_DOMAIN = "@shareinvestor.com"
-PUBLIC_PATHS = ("/api/auth/", "/auth/microsoft/", "/static/", "/health")
+PUBLIC_PATHS = ("/api/auth/", "/static/", "/health")
 
 
 def _secret() -> bytes:
@@ -46,13 +43,8 @@ def _key() -> bytes:
     return _KEY
 
 
-def teams_enabled() -> bool:
-    return bool(os.getenv("AZURE_CLIENT_ID") and os.getenv("AZURE_CLIENT_SECRET"))
-
-
-def issue(email: str, name: str, ae: Optional[str] = None, via: str = "password") -> str:
-    payload = {"email": email.lower(), "name": name, "ae": ae or name.split(" ")[0], "via": via,
-               "exp": int(time.time()) + MAX_AGE}
+def issue(name: str) -> str:
+    payload = {"email": name, "name": name, "ae": name, "exp": int(time.time()) + MAX_AGE}
     body = base64.urlsafe_b64encode(json.dumps(payload, ensure_ascii=False).encode()).decode()
     sig = hmac.new(_key(), body.encode(), hashlib.sha256).hexdigest()
     return f"{body}.{sig}"
@@ -80,12 +72,17 @@ def set_cookie(response, token: str, request: Request):
     response.set_cookie(COOKIE, token, max_age=MAX_AGE, httponly=True, secure=secure, samesite="lax", path="/")
 
 
-def check_password(password: str) -> bool:
-    expected = os.getenv("TEAM_PASSWORD")
-    return bool(expected) and hmac.compare_digest((password or "").encode(), expected.encode())
+def check_login(username: str, password: str) -> bool:
+    user = os.getenv("LOGIN_USER", "admin")
+    expected = os.getenv("LOGIN_PASSWORD")
+    if not expected:
+        return False
+    ok_user = hmac.compare_digest((username or "").strip().lower().encode(), user.lower().encode())
+    ok_pw = hmac.compare_digest((password or "").encode(), expected.encode())
+    return ok_user and ok_pw
 
 
-# tiny per-IP throttle for the password form (nginx rate-limits too)
+# tiny per-IP throttle for the login form (nginx rate-limits too)
 _attempts: Dict[str, list] = {}
 
 
