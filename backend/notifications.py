@@ -47,28 +47,6 @@ def _load_user_smtp() -> Dict[str, Dict]:
     return {}
 
 
-def set_user_smtp(email: str, password: str, smtp_user: str = None,
-                  smtp_from: str = None, host: str = None, port: int = None) -> bool:
-    data = _load_user_smtp()
-    email = (email or "").strip()
-    if not email or not (password or "").strip():
-        return False
-    data[email] = {
-        "user": (smtp_user or email).strip(),
-        "password": password.strip(),
-        "from": (smtp_from or email).strip(),
-        "host": (host or "").strip() or None,
-        "port": port,
-    }
-    USER_SMTP_FILE.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
-    return True
-
-
-def has_user_smtp(email: str) -> bool:
-    u = _load_user_smtp().get((email or "").strip())
-    return bool(u and u.get("password"))
-
-
 # สัญญาที่ยกเลิกไปแล้ว = ลูกค้าเลิกใช้ ไม่ใช่งานต่ออายุ → ไม่นับเป็นการแจ้งเตือน
 _DEAD_STATUSES = {"cancelled"}
 

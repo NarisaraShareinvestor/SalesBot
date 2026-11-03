@@ -13,6 +13,7 @@ from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, Header, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
@@ -28,8 +29,7 @@ from memory_manager import CustomerMemoryManager, UserMemoryManager
 import improve
 import radar
 from models import Customer, FollowUp, ImprovementReport, IssueLog, LearnedGuidance, MemoryType, TeamMember, UserCredential
-from notifications import (get_ae_emails, has_user_smtp, notification_summary,
-                           send_expiry_digest, set_ae_emails, set_user_smtp)
+from notifications import get_ae_emails, notification_summary, send_expiry_digest, set_ae_emails
 from services import customer_full, customer_summary, dashboard_data, expiry_state
 from microsoft_teams import get_oauth_url, exchange_code_for_token, extract_identity, store_credential
 
@@ -179,6 +179,10 @@ def index():
     if f.exists():
         return FileResponse(f)
     return JSONResponse({"message": "SalesBot API running. Frontend not found."})
+
+
+if (FRONTEND_DIR / "static").is_dir():
+    app.mount("/static", StaticFiles(directory=FRONTEND_DIR / "static"), name="static")
 
 
 @app.get("/health")
@@ -428,15 +432,6 @@ def add_team_member(body: TeamMemberIn, db: Session = Depends(get_db)):
     return {"id": m.id, "email": m.email, "full_name": m.full_name, "nickname": m.nickname}
 
 
-@app.delete("/api/users/{member_id}")
-def remove_team_member(member_id: int, db: Session = Depends(get_db)):
-    m = db.get(TeamMember, member_id)
-    if not m:
-        raise HTTPException(404, "ไม่พบสมาชิก")
-    db.delete(m); db.commit()
-    return {"ok": True}
-
-
 # ── Export ───────────────────────────────────────────────────────────────────
 _EXPORT_COLS = [
     "account", "company_name_en", "company_name_th", "ae_ir", "contract_type",
@@ -642,48 +637,6 @@ class AeEmailsIn(BaseModel):
 @app.put("/api/ae-emails")
 def ae_emails_set(body: AeEmailsIn):
     return set_ae_emails(body.mapping)
-
-
-class SmtpCredIn(BaseModel):
-    user_email: str
-    app_password: str
-    smtp_user: Optional[str] = None   # default = user_email
-    smtp_from: Optional[str] = None
-    host: Optional[str] = None
-    port: Optional[int] = None
-
-
-@app.post("/api/smtp-credentials")
-def smtp_credentials_set(body: SmtpCredIn):
-    """ตั้งค่าอีเมลส่ง (ปฏิทิน/อีเมล) ของผู้ใช้แต่ละคน — เรียกตอน login."""
-    ok = set_user_smtp(body.user_email, body.app_password, body.smtp_user,
-                       body.smtp_from, body.host, body.port)
-    return {"ok": ok}
-
-
-@app.get("/api/smtp-credentials")
-def smtp_credentials_status(user_email: str):
-    """เช็คว่าผู้ใช้ตั้งค่าอีเมลส่งไว้หรือยัง (ไม่คืนรหัสผ่าน)."""
-    return {"configured": has_user_smtp(user_email)}
-
-
-# ── Profile (who is the logged-in AE) ────────────────────────────────────────
-class ProfileIn(BaseModel):
-    user_email: str
-    full_name: Optional[str] = None
-    ae_name: Optional[str] = None
-
-
-@app.get("/api/profile")
-def get_profile(user_email: str, db: Session = Depends(get_db)):
-    p = UserMemoryManager.get_active_memory(db, user_email, MemoryType.PROFILE)
-    return p.content if p else {}
-
-
-@app.post("/api/profile")
-def set_profile(body: ProfileIn, db: Session = Depends(get_db)):
-    rec = UserMemoryManager.save_profile(db, body.user_email, body.full_name, body.ae_name)
-    return rec.content
 
 
 # ── Microsoft Teams OAuth ──────────────────────────────────────────────────────

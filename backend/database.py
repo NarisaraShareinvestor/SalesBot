@@ -3,9 +3,8 @@ import os
 from pathlib import Path
 
 from dotenv import load_dotenv
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker, declarative_base
-from sqlalchemy.pool import StaticPool
 
 # Check DATABASE_URL from docker-compose environment FIRST (before load_dotenv override)
 DATABASE_URL = os.getenv("DATABASE_URL")
@@ -19,12 +18,21 @@ if not DATABASE_URL:
 
 _is_pg = "postgresql" in DATABASE_URL
 
+# One connection per pooled checkout — a single shared SQLite connection (StaticPool) breaks
+# when FastAPI's threadpool runs requests in parallel ("database disk image is malformed").
 engine = create_engine(
     DATABASE_URL,
     echo=False,
-    connect_args={} if _is_pg else {"check_same_thread": False},
-    poolclass=None if _is_pg else StaticPool,
+    connect_args={} if _is_pg else {"check_same_thread": False, "timeout": 15},
 )
+
+if not _is_pg:
+    @event.listens_for(engine, "connect")
+    def _sqlite_pragmas(dbapi_conn, _):
+        cur = dbapi_conn.cursor()
+        cur.execute("PRAGMA journal_mode=WAL")   # readers don't block the writer
+        cur.execute("PRAGMA busy_timeout=15000")
+        cur.close()
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
