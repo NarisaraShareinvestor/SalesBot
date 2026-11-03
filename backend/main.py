@@ -53,6 +53,12 @@ def _migrate_db():
         if "creator_email" not in cols:
             conn.execute(text("ALTER TABLE followups ADD COLUMN creator_email TEXT"))
             conn.commit()
+        # ที่อยู่ลูกค้า — เพิ่มใน model ทีหลัง DB เดิมยังไม่มีคอลัมน์
+        cust_cols = [r[1] for r in conn.execute(text("PRAGMA table_info(customers)"))]
+        for col, typ in (("address_th", "TEXT"), ("address_en", "TEXT"), ("zip_code", "VARCHAR(20)")):
+            if cust_cols and col not in cust_cols:
+                conn.execute(text(f"ALTER TABLE customers ADD COLUMN {col} {typ}"))
+                conn.commit()
     # create team_members table if not exists, and add full_name if missing
     with engine.connect() as conn:
         conn.execute(text("""
