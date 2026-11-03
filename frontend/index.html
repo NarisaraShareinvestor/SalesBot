@@ -938,7 +938,7 @@ async function loadDashboard(){
   const t2=document.getElementById("aeTable");
   t2.innerHTML="<thead><tr><th>AE-IR</th><th class='num'>ลูกค้าในมือ</th><th class='num'>ใช้งานอยู่</th><th class='num'>ใกล้หมด</th><th class='num'>หมดยังไม่ต่อ</th><th class='num'>มูลค่าในมือ</th><th class='num'>งานค้าง</th></tr></thead><tbody>"+
     d.by_ae.filter(a=>a.active+a.expiring_soon+a.expired+a.open>0).map(a=>`<tr class="clickable" onclick="gotoAE('${esc(a.ae)}')">
-      <td class="acct">${esc(a.ae)} ${a.ae===meAE()?'<span class="badge b-mut" style="margin-left:4px">คุณ</span>':''}</td>
+      <td class="acct">${a.ae==="ไม่ระบุ"?'<span class="mut">ไม่มี AE ดูแล</span>':esc(a.ae)} ${a.ae===meAE()?'<span class="badge b-mut" style="margin-left:4px">คุณ</span>':''}</td>
       <td class="num">${a.active+a.expiring_soon+a.expired}</td><td class="num">${a.active}</td>
       <td class="num">${a.expiring_soon?`<span class="d-warn">${a.expiring_soon}</span>`:0}</td>
       <td class="num">${a.expired?`<span class="d-bad">${a.expired}</span>`:0}</td>

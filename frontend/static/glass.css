@@ -1,60 +1,40 @@
-/* SalesBot — Warm Glass (same look as AI Monitor, glassmorphism skill 2026-11-03)
-   Loaded last, overrides the tokens + materials of index.html only. Layout, copy and JS are untouched:
-   delete the <link> to go back. Background photo: Unsplash photo-1600210492486 (free licence). */
+/* SalesBot — White Glass (formal): frosted-glass layers from the AI Monitor look, on a white/neutral tone.
+   Light only — this is used in official settings. Loaded last, overrides tokens + materials of index.html;
+   layout, copy and JS untouched: delete the <link> to go back.
+   Background photo: Unsplash photo-1600210492486 (free licence), desaturated under a white veil. */
 
 :root {
-  --page: #d8c4a6;
+  --page: #f4f5f7;
   --bg: transparent;
-  --glass: rgba(250, 243, 233, .66); --tile: rgba(255, 252, 247, .88); --solid: #f6ecdf; --plane: rgba(255, 250, 243, .55);
+  --glass: rgba(255, 255, 255, .62); --tile: rgba(255, 255, 255, .9); --solid: #ffffff; --plane: rgba(255, 255, 255, .72);
   --card: var(--glass); --surface: var(--tile);
-  --line: rgba(255, 255, 255, .58); --line2: rgba(120, 92, 64, .14);
-  --ink: #2b231c; --ink2: #3d3026; --muted: #4a3a2c; --faint: #54412f;
-  --accent: #302821; --accent-h: #4a3a2c; --on-accent: #f4e8d6; --accent-ink: #64421f;
-  --hover: rgba(255, 255, 255, .45); --pressed: rgba(214, 190, 156, .38); --chip: rgba(214, 190, 156, .34);
-  --ok: #36502a; --ok-bg: rgba(110, 140, 80, .2);
-  --warn: #622f05; --warn-mark: #d08a3a; --warn-bg: rgba(208, 138, 58, .22);
-  --bad: #761b13; --bad-mark: #c8473a; --bad-bg: rgba(200, 71, 58, .18);
-  --sheen: rgba(255, 255, 255, .34);
-  --shadow: inset 0 1px 0 rgba(255, 255, 255, .8), inset 0 -1px 0 rgba(120, 90, 60, .1),
-            0 1px 2px rgba(60, 40, 20, .06), 0 14px 32px -12px rgba(60, 40, 20, .26), 0 44px 80px -36px rgba(60, 40, 20, .3);
-  --lift: inset 0 1px 0 #fff, 0 1px 1px rgba(60, 40, 20, .05), 0 8px 18px -8px rgba(60, 40, 20, .22);
-  --pop-shadow: 0 18px 48px rgba(50, 32, 16, .24);
-  --glass-blur: blur(22px) saturate(140%);
-  --photo-veil: linear-gradient(180deg, rgba(64, 44, 26, .10), rgba(64, 44, 26, .24));
-  --hero: linear-gradient(160deg, #3d3229, #261f19); --hero-ink: #fbf3e6; --hero-ink-2: #e2d0b6;
-  --hero-chip: rgba(255, 240, 220, .12); --hero-line: rgba(255, 240, 220, .2);
+  --line: rgba(255, 255, 255, .85); --line2: rgba(31, 38, 48, .09);
+  --ink: #1d222a; --ink2: #333a45; --muted: #4c5562; --faint: #59626f;
+  --accent: #1f252e; --accent-h: #343c48; --on-accent: #ffffff; --accent-ink: #1f3f66;
+  --hover: rgba(255, 255, 255, .7); --pressed: rgba(31, 38, 48, .08); --chip: rgba(31, 38, 48, .07);
+  --ok: #1f5a36; --ok-bg: rgba(46, 125, 80, .13);
+  --warn: #6e3c00; --warn-mark: #d18a2c; --warn-bg: rgba(209, 138, 44, .16);
+  --bad: #8a1f17; --bad-mark: #cc4436; --bad-bg: rgba(204, 68, 54, .12);
+  --sheen: rgba(255, 255, 255, .55);
+  --shadow: inset 0 1px 0 rgba(255, 255, 255, .95), inset 0 -1px 0 rgba(31, 38, 48, .05),
+            0 1px 2px rgba(20, 28, 40, .05), 0 14px 32px -14px rgba(20, 28, 40, .16), 0 40px 80px -40px rgba(20, 28, 40, .2);
+  --lift: inset 0 1px 0 #fff, 0 1px 1px rgba(20, 28, 40, .04), 0 8px 18px -10px rgba(20, 28, 40, .16);
+  --pop-shadow: 0 18px 48px rgba(20, 28, 40, .18);
+  --glass-blur: blur(24px) saturate(120%);
+  --photo-veil: linear-gradient(180deg, rgba(255, 255, 255, .64), rgba(246, 247, 249, .78));
+  --hero: linear-gradient(160deg, #2b323c, #1a1f26); --hero-ink: #ffffff; --hero-ink-2: #dfe4ea;
+  --hero-chip: rgba(255, 255, 255, .12); --hero-line: rgba(255, 255, 255, .22);
   color-scheme: light;
 }
-@media (prefers-color-scheme: dark) {
-  :root {
-    --page: #1d1611;
-    --glass: rgba(46, 36, 28, .6); --tile: rgba(74, 60, 47, .72); --solid: #2a211a; --plane: rgba(255, 240, 220, .07);
-    --line: rgba(255, 240, 220, .14); --line2: rgba(255, 240, 220, .1);
-    --ink: #f3e8d8; --ink2: #e2d2bc; --muted: #cdb99f; --faint: #c4ae94;
-    --accent: #e9d8be; --accent-h: #d6be9c; --on-accent: #2b231c; --accent-ink: #e6c08f;
-    --hover: rgba(255, 240, 220, .08); --pressed: rgba(214, 190, 156, .16); --chip: rgba(214, 190, 156, .14);
-    --ok: #a9c48a; --ok-bg: rgba(169, 196, 138, .15);
-    --warn: #f5c283; --warn-mark: #e3a050; --warn-bg: rgba(240, 180, 106, .16);
-    --bad: #f7aa9c; --bad-mark: #e0685a; --bad-bg: rgba(240, 144, 128, .16);
-    --sheen: rgba(255, 240, 220, .07);
-    --shadow: inset 0 1px 0 rgba(255, 240, 220, .1), 0 1px 2px rgba(0, 0, 0, .2), 0 14px 32px -12px rgba(0, 0, 0, .5), 0 44px 80px -36px rgba(0, 0, 0, .55);
-    --lift: inset 0 1px 0 rgba(255, 240, 220, .08), 0 1px 1px rgba(0, 0, 0, .2), 0 8px 18px -8px rgba(0, 0, 0, .55);
-    --pop-shadow: 0 18px 48px rgba(0, 0, 0, .5);
-    --photo-veil: linear-gradient(180deg, rgba(20, 13, 8, .62), rgba(20, 13, 8, .74));
-    --hero: linear-gradient(160deg, #efe0c8, #d9c19e); --hero-ink: #2b231c; --hero-ink-2: #3d3026;
-    --hero-chip: rgba(48, 40, 33, .1); --hero-line: rgba(48, 40, 33, .22);
-    color-scheme: dark;
-  }
-}
 
-/* ---------- layer 0: blurred room photo ---------- */
+/* ---------- layer 0: blurred room photo, nearly white ---------- */
 html { background: var(--page); }
 body { background: transparent; font-family: "Anuphan", "Inter", -apple-system, "Segoe UI", sans-serif; }
 body::before, body::after { content: ""; position: fixed; z-index: -1; pointer-events: none; }
-body::before { inset: -28px; background: url(/static/bg.jpg) center / cover no-repeat; filter: blur(8px) saturate(1.05); }
+body::before { inset: -28px; background: url(/static/bg.jpg) center / cover no-repeat; filter: blur(10px) saturate(.25); }
 body::after { inset: 0; background: var(--photo-veil); }
-::selection { background: rgba(180, 148, 112, .45); color: #2b231c; }
-* { scrollbar-color: rgba(120, 92, 64, .35) transparent; }
+::selection { background: rgba(31, 63, 102, .18); color: var(--ink); }
+* { scrollbar-color: rgba(31, 38, 48, .25) transparent; }
 
 /* ---------- layer 1: frosted glass with a top sheen ---------- */
 .sidebar, .card, .stat, .bell, .hamburger, .topbar > div:first-child {
@@ -96,7 +76,7 @@ body::after { inset: 0; background: var(--photo-veil); }
 .nav a.active::before { display: none; }
 .tabs button.active { background: var(--accent); color: var(--on-accent); }
 .navcount, .chip-f .n { background: var(--chip); color: var(--ink2); }
-.nav a.active .navcount, .chip-f.active .n { background: rgba(255, 240, 220, .2); color: var(--on-accent); }
+.nav a.active .navcount, .chip-f.active .n { background: rgba(255, 255, 255, .2); color: var(--on-accent); }
 .brand .mark { background: var(--accent); color: var(--on-accent); }
 input, select, textarea, .search input, .chat-input input, .fld input, .fld select, .fu-add input, .sched-remind select {
   background-color: var(--plane); color: var(--ink); border-color: var(--line);
@@ -107,14 +87,14 @@ input:focus, select:focus, textarea:focus { border-color: var(--ink2); }
 
 /* dashboard pieces */
 .drow:hover { background: var(--hover); }
-.bar-track { background: var(--chip); box-shadow: inset 0 1px 2px rgba(60, 40, 20, .14); }
+.bar-track { background: var(--chip); box-shadow: inset 0 1px 2px rgba(20, 28, 40, .12); }
 .bar-fill { background: var(--warn-mark); }
 .bar-fill.hot { background: var(--bad-mark); }
 .dash-side .card, .dash-grid > .card { --surface: var(--tile); }
 
 /* tables: transparent head, thin rules */
 th { background: transparent; color: var(--muted); }
-tr.clickable:hover td { background: rgba(255, 250, 243, .32); }
+tr.clickable:hover, tr.clickable:hover td { background: var(--hover); }
 
 /* status: soft fill + thin edge, never a thick colored stripe */
 .b-ok { background: var(--ok-bg); color: var(--ok); }
